@@ -169,6 +169,19 @@ fn gen_reds(
         .choose_multiple(&mut rng, n as usize)
 }
 
+fn add_formation<T>(config: &mut Ini, taskforce: &str, vessels: &Vec<T>) {
+    let n = vessels.len();
+    let sections = (0..n)
+        .map(|i| format!("Taskforce1Vessel{}", i + 1))
+        .collect::<Vec<_>>();
+    let formation = sections.join(",");
+    // OverrideSpawnPositions allows us to place our units anywhere and the formation
+    // will be adjusted by the game on mission start (which is exactly what we want)
+    let formation_str = format!("{}|Group Name 1|Circle|1.5|OverrideSpawnPositions", formation);
+    let key = format!("{}_Formation1", taskforce);
+    config.set("Mission", &key, Some(formation_str));
+}
+
 fn main() {
     let mission_path = dir::mission_dir().join("Random Mission.ini");
     let mut config = load_template()
@@ -178,8 +191,8 @@ fn main() {
         MissionOptions {
             size: (100, 100),
             n_neutral: GenOption::MinMax(10, 30),
-            n_blue: GenOption::Fixed(1),
-            n_red: GenOption::Fixed(2),
+            n_blue: GenOption::Fixed(5),
+            n_red: GenOption::Fixed(5),
         }
     );
     println!("config: {:?}", mission);
@@ -203,9 +216,11 @@ fn main() {
 
     let blues = gen_blues(&mission, &vessels);
     let n_blue = blues.len();
-    config.set("Mission", "NumberOfTaskforce1Vessels", Some(n_blue.to_string()));
-
     println!("number of blues: {}", n_blue);
+    config.set("Mission", "NumberOfTaskforce1Vessels", Some(n_blue.to_string()));
+    // put them into formations for now
+    add_formation(&mut config, "Taskforce1", &blues);
+    config.set("Mission", "Taskforce1_NumberOfFormations", Some(1.to_string()));
     for (i, vessel) in blues.iter().enumerate() {
         println!("adding blue: {:?}", vessel);
 
@@ -219,7 +234,8 @@ fn main() {
     let reds = gen_reds(&mission, &vessels);
     let n_red = reds.len();
     config.set("Mission", "NumberOfTaskforce2Vessels", Some(n_red.to_string()));
-
+    add_formation(&mut config, "Taskforce2", &reds);
+    config.set("Mission", "Taskforce2_NumberOfFormations", Some(1.to_string()));
     println!("number of reds: {}", n_red);
     for (i, vessel) in reds.iter().enumerate() {
         println!("adding red: {:?}", vessel);
