@@ -3,7 +3,7 @@ mod unit_db;
 
 use rand::seq::IteratorRandom;
 use rand::{rngs::ThreadRng, thread_rng, Rng};
-use unit_db::UnitDB;
+use unit_db::{UnitDB, Vessel, VesselType};
 use std::error::Error;
 use std::path::Path;
 use std::str;
@@ -21,66 +21,6 @@ fn write_template(path: &Path, config: Ini) -> std::io::Result<()> {
     let mut options = WriteOptions::default();
     options.blank_lines_between_sections = 1;
     config.pretty_write(path, &options)
-}
-
-#[derive(Clone, Debug)]
-struct Vessel {
-    id: String,
-    nation: String,
-}
-
-impl Vessel {
-    // TODO: move to Mission::write_vessel
-    fn write_config(
-        &self,
-        config: &mut Ini,
-        section: &str,
-        position: &(f32, f32),
-        heading: u16
-    ) {
-        config.set(&section, "type", Some(self.id.clone()));
-        // speed setting
-        config.set(&section, "Telegraph", Some(2.to_string()));
-        // defaults to "Green"
-        config.set(&section, "CrewSkill", Some("Trained".to_owned()));
-        // defaults to "Depleted"
-        config.set(&section, "Stores", Some("Full".to_owned()));
-
-        let position_str = format!("{},0,{}", position.0, position.1);
-        config.set(&section, "RelativePositionInNM", Some(position_str));
-        config.set(&section, "Heading", Some(heading.to_string()));
-    }
-}
-
-fn path_to_id(path: &Path) -> Option<&str> {
-    path.file_stem().and_then(|p| p.to_str())
-}
-
-fn load_vessels() -> std::io::Result<Vec<Vessel>> {
-    let entries = std::fs::read_dir(dir::vessel_dir())?
-        .flatten()
-        .map(|entry| entry.path())
-        .filter(|path| path.is_file());
-
-    let vessels = entries
-        // ignore _variants file
-        .filter(|path| {
-            !path_to_id(path)
-                // safe to unwrap since we know that the path is definitely a file
-                .unwrap()
-                .ends_with("_variants")
-        })
-        .filter_map(|path| {
-            let id = path_to_id(&path).unwrap();
-            id
-                .split_once("_")
-                .map(|(nation, _)| Vessel {
-                    id: id.to_owned(),
-                    nation: nation.to_owned(),
-                })
-        });
-
-    Ok(vessels.collect())
 }
 
 #[derive(Debug)]
@@ -131,44 +71,70 @@ impl Mission {
             rng.gen_range(-half_h..=half_h),
         )
     }
+
+    fn write_vessel(
+        &self,
+        config: &mut Ini,
+        section: &str,
+        vessel: &Vessel,
+    ) {
+        config.set(&section, "type", Some(vessel.id.clone()));
+        // speed setting
+        config.set(&section, "Telegraph", Some(2.to_string()));
+        // defaults to "Green"
+        config.set(&section, "CrewSkill", Some("Trained".to_owned()));
+        // defaults to "Depleted"
+        config.set(&section, "Stores", Some("Full".to_owned()));
+
+        let position = self.gen_position();
+        let position_str = format!("{},0,{}", position.0, position.1);
+        config.set(&section, "RelativePositionInNM", Some(position_str));
+
+        let heading = thread_rng().gen_range(0..360);
+        config.set(&section, "Heading", Some(heading.to_string()));
+    }
 }
 
-fn gen_neutrals(
-    mission: &Mission,
-    vessels: &Vec<Vessel>
-) -> Vec<Vessel> {
+fn gen_neutrals<'a>(
+    mission: &'a Mission,
+    unit_db: &'a UnitDB,
+) -> Vec<&'a Vessel> {
     let mut rng = thread_rng();
     let n = mission.options.n_neutral.gen(&mut rng);
-    vessels
+    unit_db.all_vessels()
         .iter()
         .filter(|v| v.nation == "civ")
-        .map(|v| v.clone())
+        .map(|v| *v)
         .choose_multiple(&mut rng, n as usize)
 }
 
-fn gen_blues(
-    mission: &Mission,
-    vessels: &Vec<Vessel>
-) -> Vec<Vessel> {
+fn gen_blues<'a>(
+    mission: &'a Mission,
+    unit_db: &'a UnitDB,
+) -> Vec<&'a Vessel> {
     let mut rng = thread_rng();
     let n = mission.options.n_blue.gen(&mut rng);
-    vessels
+    unit_db.all_vessels()
         .iter()
         .filter(|v| v.nation == "wp")
-        .map(|v| v.clone())
+        // only use ships for now, subs aren't ready yet
+        .filter(|v| v.subtype == VesselType::Ship)
+        .map(|v| *v)
         .choose_multiple(&mut rng, n as usize)
 }
 
-fn gen_reds(
-    mission: &Mission,
-    vessels: &Vec<Vessel>
-) -> Vec<Vessel> {
+fn gen_reds<'a>(
+    mission: &'a Mission,
+    unit_db: &'a UnitDB,
+) -> Vec<&'a Vessel> {
     let mut rng = thread_rng();
     let n = mission.options.n_red.gen(&mut rng);
-    vessels
+    unit_db.all_vessels()
         .iter()
         .filter(|v| v.nation == "usn")
-        .map(|v| v.clone())
+        // only use ships for now, subs aren't ready yet
+        .filter(|v| v.subtype == VesselType::Ship)
+        .map(|v| *v)
         .choose_multiple(&mut rng, n as usize)
 }
 
@@ -202,10 +168,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     );
     println!("config: {:?}", mission);
 
-    let mut rng = thread_rng();
-    let vessels = load_vessels().expect("failed to load vessels");
-
-    let neutrals = gen_neutrals(&mission, &vessels);
+    let neutrals = gen_neutrals(&mission, &unit_db);
     let n_neutral = neutrals.len();
     config.set("Mission", "NumberOfNeutralVessels", Some(n_neutral.to_string()));
 
@@ -214,12 +177,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         println!("adding neutral: {:?}", vessel);
 
         let section = format!("NeutralVessel{}", i + 1);
-        let position = mission.gen_position();
-        let heading: u16 = rng.gen_range(0..360);
-        vessel.write_config(&mut config, &section, &position, heading);
+        mission.write_vessel(&mut config, &section, &vessel);
     }
 
-    let blues = gen_blues(&mission, &vessels);
+    let blues = gen_blues(&mission, &unit_db);
     let n_blue = blues.len();
     println!("number of blues: {}", n_blue);
     config.set("Mission", "NumberOfTaskforce1Vessels", Some(n_blue.to_string()));
@@ -230,13 +191,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         println!("adding blue: {:?}", vessel);
 
         let section = format!("Taskforce1Vessel{}", i + 1);
-        let position = mission.gen_position();
-        let heading: u16 = rng.gen_range(0..360);
-
-        vessel.write_config(&mut config, &section, &position, heading);
+        mission.write_vessel(&mut config, &section, &vessel);
     }
 
-    let reds = gen_reds(&mission, &vessels);
+    let reds = gen_reds(&mission, &unit_db);
     let n_red = reds.len();
     config.set("Mission", "NumberOfTaskforce2Vessels", Some(n_red.to_string()));
     add_formation(&mut config, "Taskforce2", &reds);
@@ -246,10 +204,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         println!("adding red: {:?}", vessel);
 
         let section = format!("Taskforce2Vessel{}", i + 1);
-        let position = mission.gen_position();
-        let heading: u16 = rng.gen_range(0..360);
-
-        vessel.write_config(&mut config, &section, &position, heading);
+        mission.write_vessel(&mut config, &section, &vessel);
         config.set(&section, "WeaponStatus", Some("Free".to_owned()));
     }
 
