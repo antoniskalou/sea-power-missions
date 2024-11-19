@@ -1,6 +1,6 @@
 mod dir;
 
-use rand::{thread_rng, Rng};
+use rand::{thread_rng, Rng, seq::SliceRandom};
 use std::path::Path;
 use std::str;
 use configparser::ini::{Ini, WriteOptions};
@@ -66,36 +66,111 @@ fn test_path() {
     assert!(stem.to_str().unwrap().ends_with("le"));
 }
 
+#[derive(Debug)]
+struct MissionOptions {
+    /// the size of the box (w,h) that the mission will take place in.
+    size: (u32, u32),
+    /// the maximum number of neutrals to generate
+    n_neutral: u32,
+    /// number of friendlies
+    n_blue: u32,
+    /// number of hostiles
+    n_red: u32,
+}
+
+#[derive(Debug)]
+struct Mission {
+    options: MissionOptions,
+}
+
+impl Mission {
+    fn new(options: MissionOptions) -> Self {
+        Self { options }
+    }
+
+    fn gen_position(&self) -> (f32, f32) {
+        let mut rng = thread_rng();
+        let (w, h) = self.options.size;
+        let half_w = w as f32 / 2.0;
+        let half_h = h as f32 / 2.0;
+        (
+            rng.gen_range(-half_w..=half_w),
+            rng.gen_range(-half_h..=half_h),
+        )
+    }
+}
+
 fn main() {
     let mission_path = dir::mission_dir().join("Random Mission.ini");
-    let mut mission = load_template()
+    let mut config = load_template()
         .expect("failed to read mission_template.ini");
+
+    let mission = Mission::new(
+        MissionOptions {
+            size: (200, 200),
+            n_neutral: 100,
+            n_blue: 1,
+            n_red: 2,
+        }
+    );
 
     let mut rng = thread_rng();
     let vessels = load_vessels().expect("failed to load vessels");
-    mission.set("Mission", "NumberOfNeutralVessels", Some(vessels.len().to_string()));
-    for (i, vessel) in vessels.iter().enumerate() {
-        if vessel.nation != "civ" {
-            continue;
-        }
 
-        println!("vessel: {:?}", vessel);
+    let n_neutral = rng.gen_range(0..=mission.options.n_neutral);
+    let neutrals = vessels
+        .iter()
+        .filter(|v| v.nation == "civ")
+        .collect::<Vec<_>>();
+    config.set("Mission", "NumberOfNeutralVessels", Some(n_neutral.to_string()));
+
+    println!("number of neutrals: {}", n_neutral);
+    for i in 0..n_neutral {
+        let vessel = neutrals.choose(&mut rng).unwrap();
+        println!("Adding vessel: {:?}", vessel);
 
         let section = format!("NeutralVessel{}", i + 1);
-        mission.set(&section, "type", Some(vessel.id.clone()));
-        // mission.set(&section, "WeaponStatus", Some("Tight".to_owned()));
-        mission.set(&section, "CrewSkill", Some("Trained".to_owned()));
-        mission.set(&section, "Stores", Some("Full".to_owned()));
+        config.set(&section, "type", Some(vessel.id.clone()));
+        // a.k.a. speed
+        config.set(&section, "Telegraph", Some(2.to_string()));
+        config.set(&section, "CrewSkill", Some("Trained".to_owned()));
+        config.set(&section, "Stores", Some("Full".to_owned()));
 
-        let position: (i32, i32, i32) =
-            (rng.gen_range(-10..=10), 0, rng.gen_range(-10..=10));
-        let position_str = format!("{},{},{}", position.0, position.1, position.2);
-        mission.set(&section, "RelativePositionInNM", Some(position_str));
+        let position = mission.gen_position();
+        let position_str = format!("{},0,{}", position.0, position.1);
+        config.set(&section, "RelativePositionInNM", Some(position_str));
 
         let heading: u16 = rng.gen_range(0..360);
-        mission.set(&section, "Heading", Some(heading.to_string()));
+        config.set(&section, "Heading", Some(heading.to_string()));
     }
 
-    write_template(&mission_path, mission)
+    let n_red = rng.gen_range(1..=mission.options.n_red);
+    let reds = vessels
+        .iter()
+        .filter(|v| v.nation == "usn")
+        .collect::<Vec<_>>();
+    config.set("Mission", "NumberOfTaskforce2Vessels", Some(n_red.to_string()));
+
+    println!("number of reds: {}", n_red);
+    for i in 0..n_red {
+        let vessel = reds.choose(&mut rng).unwrap();
+        println!("Adding vessel: {:?}", vessel);
+
+        let section = format!("Taskforce2Vessel{}", i + 1);
+        config.set(&section, "type", Some(vessel.id.clone()));
+        config.set(&section, "Telegraph", Some(2.to_string()));
+        config.set(&section, "WeaponStatus", Some("Free".to_owned()));
+        config.set(&section, "CrewSkill", Some("Trained".to_owned()));
+        config.set(&section, "Stores", Some("Full".to_owned()));
+
+        let position = mission.gen_position();
+        let position_str = format!("{},0,{}", position.0, position.1);
+        config.set(&section, "RelativePositionInNM", Some(position_str));
+
+        let heading: u16 = rng.gen_range(0..360);
+        config.set(&section, "Heading", Some(heading.to_string()));
+    }
+
+    write_template(&mission_path, config)
         .expect("failed to write mission file");
 }
