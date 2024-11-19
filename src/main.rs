@@ -1,7 +1,8 @@
 mod dir;
 
+use rand::seq::IteratorRandom;
 use rand::{rngs::ThreadRng, seq::SliceRandom, thread_rng, Rng};
-use std::path::Path;
+use std::{os::windows::thread, path::Path};
 use std::str;
 use configparser::ini::{Ini, WriteOptions};
 
@@ -23,6 +24,29 @@ fn write_template(path: &Path, config: Ini) -> std::io::Result<()> {
 struct Vessel {
     id: String,
     nation: String,
+}
+
+impl Vessel {
+    // TODO: move to Mission::write_vessel
+    fn write_config(
+        &self,
+        config: &mut Ini,
+        section: &str,
+        position: &(f32, f32),
+        heading: u16
+    ) {
+        config.set(&section, "type", Some(self.id.clone()));
+        // speed setting
+        config.set(&section, "Telegraph", Some(2.to_string()));
+        // defaults to "Green"
+        config.set(&section, "CrewSkill", Some("Trained".to_owned()));
+        // defaults to "Depleted"
+        config.set(&section, "Stores", Some("Full".to_owned()));
+
+        let position_str = format!("{},0,{}", position.0, position.1);
+        config.set(&section, "RelativePositionInNM", Some(position_str));
+        config.set(&section, "Heading", Some(heading.to_string()));
+    }
 }
 
 fn path_to_id(path: &Path) -> Option<&str> {
@@ -106,6 +130,45 @@ impl Mission {
     }
 }
 
+fn gen_neutrals(
+    mission: &Mission,
+    vessels: &Vec<Vessel>
+) -> Vec<Vessel> {
+    let mut rng = thread_rng();
+    let n = mission.options.n_neutral.gen(&mut rng);
+    vessels
+        .iter()
+        .filter(|v| v.nation == "civ")
+        .map(|v| v.clone())
+        .choose_multiple(&mut rng, n as usize)
+}
+
+fn gen_blues(
+    mission: &Mission,
+    vessels: &Vec<Vessel>
+) -> Vec<Vessel> {
+    let mut rng = thread_rng();
+    let n = mission.options.n_blue.gen(&mut rng);
+    vessels
+        .iter()
+        .filter(|v| v.nation == "wp")
+        .map(|v| v.clone())
+        .choose_multiple(&mut rng, n as usize)
+}
+
+fn gen_reds(
+    mission: &Mission,
+    vessels: &Vec<Vessel>
+) -> Vec<Vessel> {
+    let mut rng = thread_rng();
+    let n = mission.options.n_red.gen(&mut rng);
+    vessels
+        .iter()
+        .filter(|v| v.nation == "usn")
+        .map(|v| v.clone())
+        .choose_multiple(&mut rng, n as usize)
+}
+
 fn main() {
     let mission_path = dir::mission_dir().join("Random Mission.ini");
     let mut config = load_template()
@@ -113,7 +176,7 @@ fn main() {
 
     let mission = Mission::new(
         MissionOptions {
-            size: (200, 200),
+            size: (100, 100),
             n_neutral: GenOption::MinMax(10, 30),
             n_blue: GenOption::Fixed(1),
             n_red: GenOption::Fixed(2),
@@ -124,58 +187,49 @@ fn main() {
     let mut rng = thread_rng();
     let vessels = load_vessels().expect("failed to load vessels");
 
-    let n_neutral = mission.options.n_neutral.gen(&mut rng);
-    let neutrals = vessels
-        .iter()
-        .filter(|v| v.nation == "civ")
-        .collect::<Vec<_>>();
+    let neutrals = gen_neutrals(&mission, &vessels);
+    let n_neutral = neutrals.len();
     config.set("Mission", "NumberOfNeutralVessels", Some(n_neutral.to_string()));
 
     println!("number of neutrals: {}", n_neutral);
-    for i in 0..n_neutral {
-        let vessel = neutrals.choose(&mut rng).unwrap();
-        println!("adding vessel: {:?}", vessel);
+    for (i, vessel) in neutrals.iter().enumerate() {
+        println!("adding neutral: {:?}", vessel);
 
         let section = format!("NeutralVessel{}", i + 1);
-        config.set(&section, "type", Some(vessel.id.clone()));
-        // a.k.a. speed
-        config.set(&section, "Telegraph", Some(2.to_string()));
-        config.set(&section, "CrewSkill", Some("Trained".to_owned()));
-        config.set(&section, "Stores", Some("Full".to_owned()));
-
         let position = mission.gen_position();
-        let position_str = format!("{},0,{}", position.0, position.1);
-        config.set(&section, "RelativePositionInNM", Some(position_str));
-
         let heading: u16 = rng.gen_range(0..360);
-        config.set(&section, "Heading", Some(heading.to_string()));
+        vessel.write_config(&mut config, &section, &position, heading);
     }
 
-    let n_red = mission.options.n_red.gen(&mut rng);
-    let reds = vessels
-        .iter()
-        .filter(|v| v.nation == "usn")
-        .collect::<Vec<_>>();
+    let blues = gen_blues(&mission, &vessels);
+    let n_blue = blues.len();
+    config.set("Mission", "NumberOfTaskforce1Vessels", Some(n_blue.to_string()));
+
+    println!("number of blues: {}", n_blue);
+    for (i, vessel) in blues.iter().enumerate() {
+        println!("adding blue: {:?}", vessel);
+
+        let section = format!("Taskforce1Vessel{}", i + 1);
+        let position = mission.gen_position();
+        let heading: u16 = rng.gen_range(0..360);
+
+        vessel.write_config(&mut config, &section, &position, heading);
+    }
+
+    let reds = gen_reds(&mission, &vessels);
+    let n_red = reds.len();
     config.set("Mission", "NumberOfTaskforce2Vessels", Some(n_red.to_string()));
 
     println!("number of reds: {}", n_red);
-    for i in 0..n_red {
-        let vessel = reds.choose(&mut rng).unwrap();
-        println!("adding vessel: {:?}", vessel);
+    for (i, vessel) in reds.iter().enumerate() {
+        println!("adding red: {:?}", vessel);
 
         let section = format!("Taskforce2Vessel{}", i + 1);
-        config.set(&section, "type", Some(vessel.id.clone()));
-        config.set(&section, "Telegraph", Some(2.to_string()));
-        config.set(&section, "WeaponStatus", Some("Free".to_owned()));
-        config.set(&section, "CrewSkill", Some("Trained".to_owned()));
-        config.set(&section, "Stores", Some("Full".to_owned()));
-
         let position = mission.gen_position();
-        let position_str = format!("{},0,{}", position.0, position.1);
-        config.set(&section, "RelativePositionInNM", Some(position_str));
-
         let heading: u16 = rng.gen_range(0..360);
-        config.set(&section, "Heading", Some(heading.to_string()));
+
+        vessel.write_config(&mut config, &section, &position, heading);
+        config.set(&section, "WeaponStatus", Some("Free".to_owned()));
     }
 
     write_template(&mission_path, config)
