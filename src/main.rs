@@ -1,6 +1,6 @@
 mod dir;
 
-use rand::{thread_rng, Rng, seq::SliceRandom};
+use rand::{rngs::ThreadRng, seq::SliceRandom, thread_rng, Rng};
 use std::path::Path;
 use std::str;
 use configparser::ini::{Ini, WriteOptions};
@@ -56,26 +56,32 @@ fn load_vessels() -> std::io::Result<Vec<Vessel>> {
     Ok(vessels.collect())
 }
 
-#[test]
-fn test_path() {
-    let path = Path::new("/some/file.txt");
-    assert_eq!(path.file_stem().unwrap(), "file");
+#[derive(Debug)]
+enum GenOption {
+    MinMax(u16, u16),
+    Fixed(u16),
+}
 
-    let stem = path.file_stem().unwrap();
-    assert_eq!(stem, "file");
-    assert!(stem.to_str().unwrap().ends_with("le"));
+impl GenOption {
+    fn gen(&self, rng: &mut ThreadRng) -> u16 {
+        use GenOption::*;
+        match *self {
+            MinMax(min, max) => rng.gen_range(min..=max),
+            Fixed(val) => val,
+        }
+    }
 }
 
 #[derive(Debug)]
 struct MissionOptions {
     /// the size of the box (w,h) that the mission will take place in.
-    size: (u32, u32),
+    size: (u16, u16),
     /// the maximum number of neutrals to generate
-    n_neutral: u32,
+    n_neutral: GenOption,
     /// number of friendlies
-    n_blue: u32,
+    n_blue: GenOption,
     /// number of hostiles
-    n_red: u32,
+    n_red: GenOption,
 }
 
 #[derive(Debug)]
@@ -108,16 +114,17 @@ fn main() {
     let mission = Mission::new(
         MissionOptions {
             size: (200, 200),
-            n_neutral: 100,
-            n_blue: 1,
-            n_red: 2,
+            n_neutral: GenOption::MinMax(10, 30),
+            n_blue: GenOption::Fixed(1),
+            n_red: GenOption::Fixed(2),
         }
     );
+    println!("config: {:?}", mission);
 
     let mut rng = thread_rng();
     let vessels = load_vessels().expect("failed to load vessels");
 
-    let n_neutral = rng.gen_range(0..=mission.options.n_neutral);
+    let n_neutral = mission.options.n_neutral.gen(&mut rng);
     let neutrals = vessels
         .iter()
         .filter(|v| v.nation == "civ")
@@ -127,7 +134,7 @@ fn main() {
     println!("number of neutrals: {}", n_neutral);
     for i in 0..n_neutral {
         let vessel = neutrals.choose(&mut rng).unwrap();
-        println!("Adding vessel: {:?}", vessel);
+        println!("adding vessel: {:?}", vessel);
 
         let section = format!("NeutralVessel{}", i + 1);
         config.set(&section, "type", Some(vessel.id.clone()));
@@ -144,7 +151,7 @@ fn main() {
         config.set(&section, "Heading", Some(heading.to_string()));
     }
 
-    let n_red = rng.gen_range(1..=mission.options.n_red);
+    let n_red = mission.options.n_red.gen(&mut rng);
     let reds = vessels
         .iter()
         .filter(|v| v.nation == "usn")
@@ -154,7 +161,7 @@ fn main() {
     println!("number of reds: {}", n_red);
     for i in 0..n_red {
         let vessel = reds.choose(&mut rng).unwrap();
-        println!("Adding vessel: {:?}", vessel);
+        println!("adding vessel: {:?}", vessel);
 
         let section = format!("Taskforce2Vessel{}", i + 1);
         config.set(&section, "type", Some(vessel.id.clone()));
