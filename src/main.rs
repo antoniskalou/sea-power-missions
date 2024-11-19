@@ -1,8 +1,11 @@
 mod dir;
+mod unit_db;
 
 use rand::seq::IteratorRandom;
-use rand::{rngs::ThreadRng, seq::SliceRandom, thread_rng, Rng};
-use std::{os::windows::thread, path::Path};
+use rand::{rngs::ThreadRng, thread_rng, Rng};
+use unit_db::UnitDB;
+use std::error::Error;
+use std::path::Path;
 use std::str;
 use configparser::ini::{Ini, WriteOptions};
 
@@ -182,10 +185,12 @@ fn add_formation<T>(config: &mut Ini, taskforce: &str, vessels: &Vec<T>) {
     config.set("Mission", &key, Some(formation_str));
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn Error>> {
+    let unit_db = UnitDB::new().expect("failed to initialise UnitBD");
+    println!("{:?}", unit_db);
+
     let mission_path = dir::mission_dir().join("Random Mission.ini");
-    let mut config = load_template()
-        .expect("failed to read mission_template.ini");
+    let mut config = load_template()?;
 
     let mission = Mission::new(
         MissionOptions {
@@ -248,6 +253,7 @@ fn main() {
         config.set(&section, "WeaponStatus", Some("Free".to_owned()));
     }
 
-    write_template(&mission_path, config)
-        .expect("failed to write mission file");
+    write_template(&mission_path, config)?;
+
+    Ok(())
 }
