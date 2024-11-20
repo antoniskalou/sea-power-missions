@@ -1,0 +1,97 @@
+use configparser::ini::Ini;
+
+use crate::{unit_db::Vessel, Mission};
+
+#[derive(Debug)]
+pub enum WeaponState {
+    Free,
+    Tight,
+    Hold,
+}
+
+impl ToString for WeaponState {
+    fn to_string(&self) -> String {
+        use WeaponState::*;
+        let str = match self {
+            Free => "Free",
+            Tight => "Tight",
+            Hold => "Hold",
+        };
+        str.to_owned()
+    }
+}
+
+#[derive(Debug)]
+pub struct TaskforceOptions {
+    pub weapon_state: WeaponState,
+    pub use_formation: bool,
+}
+
+#[derive(Debug)]
+pub struct Taskforce {
+    name: String,
+    options: TaskforceOptions,
+    vessels: Vec<Vessel>,
+}
+
+impl Taskforce {
+    pub fn new(name: &str, options: TaskforceOptions) -> Self {
+        Self::from_vec(name, options, &vec![])
+    }
+
+    pub fn from_vec(name: &str, options: TaskforceOptions, vessels: &Vec<&Vessel>) -> Self {
+        Self {
+            name: name.to_owned(),
+            // TODO: allow providing options
+            options,
+            vessels: vessels.iter().map(|v| (*v).clone()).collect::<Vec<_>>(),
+        }
+    }
+
+    pub fn add(&mut self, vessel: &Vessel) {
+        self.vessels.push(vessel.clone());
+    }
+
+    pub fn write_config(&self, config: &mut Ini, mission: &Mission) {
+        let n = self.vessels.len();
+        config.set(
+            "Mission",
+            &format!("NumberOf{}Vessels", self.name),
+            Some(n.to_string()),
+        );
+
+        if self.options.use_formation {
+            config.set(
+                "Mission",
+                &format!("{}_NumberOfFormations", self.name),
+                Some(1.to_string()),
+            );
+            config.set(
+                "Mission",
+                &format!("{}_Formation1", self.name),
+                Some(formation_str(&self)),
+            );
+        }
+
+        for (i, vessel) in self.vessels.iter().enumerate() {
+            let section = format!("{}Vessel{}", self.name, i + 1);
+            mission.write_vessel(config, &section, &vessel);
+            config.set(
+                &section,
+                "WeaponStatus",
+                Some(self.options.weapon_state.to_string()),
+            );
+        }
+    }
+}
+
+fn formation_str(taskforce: &Taskforce) -> String {
+    let n = taskforce.vessels.len();
+    let sections = (0..n)
+        .map(|i| format!("{}Vessel{}", taskforce.name, i + 1))
+        .collect::<Vec<_>>();
+    let formation = sections.join(",");
+    // OverrideSpawnPositions allows us to place our units anywhere and the formation
+    // will be adjusted by the game on mission start (which is exactly what we want)
+    format!("{formation}|Group Name 1|Circle|1.5|OverrideSpawnPositions")
+}

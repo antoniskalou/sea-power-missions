@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use std::{fs, io, path::Path};
-use configparser::ini::Ini;
 use crate::dir;
+use configparser::ini::Ini;
+use std::{fs, io, path::Path};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum VesselType {
@@ -82,12 +82,19 @@ fn load_vessels() -> Result<HashMap<String, Vessel>, UnitDBError> {
         if let Some((nation, _)) = id.split_once("_") {
             let id = id.to_owned();
             let nation = nation.to_owned();
-            let config = load_unit_ini(&path)
-                .map_err(|e| UnitDBError::ParseError(e))?;
-            let subtype = config.get("General", "UnitType")
+            let config = load_unit_ini(&path).map_err(|e| UnitDBError::ParseError(e))?;
+            let subtype = config
+                .get("General", "UnitType")
                 .map(|t| VesselType::from(t))
                 .unwrap_or(VesselType::Unknown);
-            vessels.insert(id.clone(), Vessel { id, nation, subtype });
+            vessels.insert(
+                id.clone(),
+                Vessel {
+                    id,
+                    nation,
+                    subtype,
+                },
+            );
         }
     }
     Ok(vessels)
@@ -133,7 +140,24 @@ impl UnitDB {
         self.vessels.values().collect()
     }
 
+    pub fn vessel_by_id(&self, id: &str) -> Option<&Vessel> {
+        self.vessels.get(id)
+    }
+
+    pub fn vessels_by_nation(&self, nation: &str) -> Vec<&Vessel> {
+        self
+            .all_vessels()
+            .iter()
+            .filter(|v| v.nation == nation)
+            .map(|v| *v)
+            .collect()
+    }
+
     pub fn all_aircraft(&self) -> Vec<&Aircraft> {
         self.aircraft.values().collect()
+    }
+
+    pub fn aircraft_by_id(&self, id: &str) -> Option<&Aircraft> {
+        self.aircraft.get(id)
     }
 }
