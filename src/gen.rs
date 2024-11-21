@@ -1,7 +1,7 @@
 use crate::unit_db::{UnitDB, Vessel, VesselType};
 use rand::{rngs::ThreadRng, seq::IteratorRandom, thread_rng, Rng};
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum GenOption {
     MinMax(u16, u16),
     Fixed(u16),

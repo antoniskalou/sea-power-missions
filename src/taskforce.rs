@@ -2,7 +2,7 @@ use configparser::ini::Ini;
 
 use crate::{unit_db::Vessel, Mission};
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum WeaponState {
     Free,
     Tight,

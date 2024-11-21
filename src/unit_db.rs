@@ -4,7 +4,7 @@ use crate::dir;
 use configparser::ini::Ini;
 use std::{fs, io, path::Path};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum VesselType {
     Ship,
     Submarine,
