@@ -28,6 +28,7 @@ impl Position {
     pub fn x(&self) -> f32 {
         self.0
     }
+
     pub fn y(&self) -> f32 {
         self.1
     }

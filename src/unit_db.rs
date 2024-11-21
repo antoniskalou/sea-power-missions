@@ -61,10 +61,32 @@ fn path_to_id(path: &Path) -> Option<&str> {
 }
 
 /// load a unit ini file
-fn load_unit_ini(path: &Path) -> Result<Ini, String> {
+fn load_ini(path: &Path) -> Result<Ini, String> {
     let mut config = Ini::new();
     config.load(path)?;
     Ok(config)
+}
+
+fn load_nation_reference() -> Result<HashMap<String, String>, UnitDBError> {
+    let config = load_ini(&dir::original_dir().join("nations_reference.ini"))?;
+
+    let mut nations = HashMap::new();
+    if let Some(map) = config.get_map() {
+        for (_, nation) in map {
+            let prefix = nation.get("nationprefix")
+                .map(|o| (*o).clone())
+                .flatten();
+            let name = nation.get("nationname")
+                .map(|o| (*o).clone())
+                .flatten();
+            prefix
+                .zip(name)
+                .map(|(prefix, name)| {
+                    nations.insert(prefix, name);
+                });
+        }
+    }
+    Ok(nations)
 }
 
 fn load_vessels() -> Result<HashMap<String, Vessel>, UnitDBError> {
@@ -82,7 +104,7 @@ fn load_vessels() -> Result<HashMap<String, Vessel>, UnitDBError> {
         if let Some((nation, _)) = id.split_once("_") {
             let id = id.to_owned();
             let nation = nation.to_owned();
-            let config = load_unit_ini(&path).map_err(|e| UnitDBError::ParseError(e))?;
+            let config = load_ini(&path)?;
             let subtype = config
                 .get("General", "UnitType")
                 .map(|t| VesselType::from(t))
@@ -116,24 +138,32 @@ impl From<io::Error> for UnitDBError {
     }
 }
 
-// impl From<String> for UnitDBError {
-//     fn from(value: String) -> Self {
-//         Self::ParseError(value)
-//     }
-// }
+impl From<String> for UnitDBError {
+    fn from(value: String) -> Self {
+        Self::ParseError(value)
+    }
+}
 
 #[derive(Debug)]
 pub struct UnitDB {
+    /// map of nation id => nation name
+    nations: HashMap<String, String>,
+    /// map of vessel id => vessel
     vessels: HashMap<String, Vessel>,
+    /// map of aircraft id => vessel
     aircraft: HashMap<String, Aircraft>,
 }
 
 impl UnitDB {
     pub fn new() -> Result<Self, UnitDBError> {
+        let nations = load_nation_reference()?;
         let vessels = load_vessels()?;
         let aircraft = load_aircraft()?;
+        Ok(Self { nations, vessels, aircraft })
+    }
 
-        Ok(Self { vessels, aircraft })
+    pub fn nation_name(&self, id: &str) -> Option<&String> {
+        self.nations.get(id)
     }
 
     pub fn all_vessels(&self) -> Vec<&Vessel> {

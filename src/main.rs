@@ -87,7 +87,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         };
         let taskforce = Taskforce::from_vec("Neutral", options, &neutrals);
         taskforce.write_config(&mut config, &mission);
-        println!("neutral taskforce: {:?}", taskforce);
+        println!("{}", taskforce);
     }
 
     let blues = gen::gen_blues(&mission.options.n_blue, &unit_db);
@@ -98,7 +98,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         };
         let taskforce = Taskforce::from_vec("Taskforce1", options, &blues);
         taskforce.write_config(&mut config, &mission);
-        println!("blue taskforce: {:?}", taskforce);
+        println!("{}", taskforce);
     }
 
     let reds = gen::gen_reds(&mission.options.n_red, &unit_db);
@@ -109,7 +109,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         };
         let taskforce = Taskforce::from_vec("Taskforce2", options, &reds);
         taskforce.write_config(&mut config, &mission);
-        println!("red taskforce: {:?}", taskforce);
+        println!("{}", taskforce);
     }
 
     write_config(&mission_path, config)?;

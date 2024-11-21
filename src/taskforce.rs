@@ -27,6 +27,10 @@ pub struct TaskforceOptions {
     pub use_formation: bool,
 }
 
+/// A taskforce represents a "side" of the engagement. They can be "Neutral"
+/// or "Taskforce1" and "Taskforce2".
+///
+/// It can contain formations and individual units.
 #[derive(Debug)]
 pub struct Taskforce {
     name: String,
@@ -82,6 +86,17 @@ impl Taskforce {
                 Some(self.options.weapon_state.to_string()),
             );
         }
+    }
+}
+
+impl std::fmt::Display for Taskforce {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let vessels = self.vessels
+            .iter()
+            .map(|v| format!("==> {}", v.id.clone()))
+            .collect::<Vec<_>>()
+            .join("\n");
+        write!(f, "{}\n{}", self.name, vessels)
     }
 }
 
