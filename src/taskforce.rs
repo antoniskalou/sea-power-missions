@@ -64,6 +64,9 @@ impl Taskforce {
             Some(n.to_string()),
         );
 
+        // TODO: for now units are all either in a formation or they are not
+        // there is no way to specify how many formations should exist and
+        // how large they should be (yet).
         if self.options.use_formation {
             config.set(
                 "Mission",

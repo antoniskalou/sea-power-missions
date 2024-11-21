@@ -27,6 +27,8 @@ fn write_config(path: &Path, config: Ini) -> std::io::Result<()> {
 
 #[derive(Debug)]
 struct MissionOptions {
+    /// the map center latitude and logitude
+    latlon: (f32, f32),
     /// the size of the box (w,h) that the mission will take place in.
     size: (u16, u16),
     /// the maximum number of neutrals to generate
@@ -47,6 +49,7 @@ impl Mission {
         Self { options }
     }
 
+    // TODO: move me
     fn write_vessel(&self, config: &mut Ini, section: &str, vessel: &Vessel) {
         config.set(&section, "type", Some(vessel.id.clone()));
         // speed setting
@@ -62,6 +65,19 @@ impl Mission {
         let heading = gen::gen_heading();
         config.set(&section, "Heading", Some(heading.to_string()));
     }
+
+    fn write_environment(&self, config: &mut Ini) {
+        config.set(
+            "Environment",
+            "MapCenterLatitude",
+            Some(self.options.latlon.0.to_string())
+        );
+        config.set(
+            "Environment",
+            "MapCenterLongitude",
+            Some(self.options.latlon.1.to_string())
+        );
+    }
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -72,12 +88,15 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut config = load_template()?;
 
     let mission = Mission::new(MissionOptions {
+        latlon: (54.0, 26.0),
         size: (100, 100),
         n_neutral: GenOption::MinMax(10, 30),
         n_blue: GenOption::Fixed(5),
         n_red: GenOption::Fixed(5),
     });
     println!("config: {:?}", mission);
+
+    mission.write_environment(&mut config);
 
     let neutrals = gen::gen_neutrals(&mission.options.n_neutral, &unit_db);
     {
