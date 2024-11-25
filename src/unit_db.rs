@@ -27,9 +27,11 @@ impl From<String> for UnitType {
     }
 }
 
+pub type UnitId = String;
+
 #[derive(Clone, Debug)]
 pub struct Unit {
-    pub id: String,
+    pub id: UnitId,
     pub nation: String,
     pub subtype: UnitType,
 }
@@ -154,6 +156,26 @@ impl UnitDB {
         self.units
             .values()
             .filter(|v| v.nation == nation)
+            .collect()
+    }
+
+    pub fn by_subtype(&self, subtype: UnitType) -> Vec<&Unit> {
+        self.units
+            .values()
+            .filter(|v| v.subtype == subtype)
+            .collect()
+    }
+
+    pub fn search(
+        &self,
+        nation: Option<&str>,
+        subtype: Option<UnitType>
+    ) -> Vec<&Unit> {
+        self.all()
+            .iter()
+            .filter(|v| nation.map(|n| v.nation == n).unwrap_or(true))
+            .filter(|v| subtype.map(|s| v.subtype == s).unwrap_or(true))
+            .map(|v| *v)
             .collect()
     }
 }

@@ -4,12 +4,12 @@ mod taskforce;
 mod unit_db;
 
 use configparser::ini::{Ini, WriteOptions};
-use gen::GenOption;
 use std::error::Error;
 use std::path::Path;
 use std::str;
 use taskforce::{Taskforce, TaskforceOptions};
-use unit_db::{UnitDB, Unit};
+use unit_db::{UnitDB, Unit, UnitId, UnitType};
+use gen::UnitOption;
 
 const MISSION_TEMPLATE: &'static str = include_str!("../resources/mission_template.ini");
 
@@ -32,11 +32,11 @@ struct MissionOptions {
     /// the size of the box (w,h) that the mission will take place in.
     size: (u16, u16),
     /// the maximum number of neutrals to generate
-    n_neutral: GenOption,
+    neutral: Vec<UnitOption>,
     /// number of friendlies
-    n_blue: GenOption,
+    blue: Vec<UnitOption>,
     /// number of hostiles
-    n_red: GenOption,
+    red: Vec<UnitOption>,
 }
 
 #[derive(Debug)]
@@ -82,7 +82,7 @@ impl Mission {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let unit_db = UnitDB::new().expect("failed to initialise UnitBD");
-    println!("{:?}", unit_db);
+    // println!("{:?}", unit_db);
 
     let mission_path = dir::mission_dir().join("Random Mission.ini");
     let mut config = load_template()?;
@@ -90,15 +90,57 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mission = Mission::new(MissionOptions {
         latlon: (54.0, -19.0),
         size: (100, 100),
-        n_neutral: GenOption::MinMax(1, 5),
-        n_blue: GenOption::Fixed(5),
-        n_red: GenOption::Fixed(5),
+        neutral: vec![
+            UnitOption::Random {
+                nation: Some("civ".to_owned()),
+                subtype: None,
+            },
+            UnitOption::Random {
+                nation: Some("civ".to_owned()),
+                subtype: None
+            },
+            UnitOption::Random {
+                nation: Some("civ".to_owned()),
+                subtype: None
+            },
+            UnitOption::Random {
+                nation: Some("civ".to_owned()),
+                subtype: None
+            },
+        ],
+        blue: vec![
+            UnitOption::Formation(vec![
+                UnitOption::Random {
+                    nation: Some("wp".to_owned()),
+                    subtype: Some(UnitType::Ship),
+                },
+                UnitOption::Unit(UnitId::from("wp_bpk_udaloy")),
+                UnitOption::Unit(UnitId::from("wp_rkr_kirov")),
+            ]),
+            UnitOption::Random {
+                nation: Some("wp".to_owned()),
+                subtype: Some(UnitType::Submarine),
+            }
+        ],
+        red: vec![
+            UnitOption::Formation(vec![
+                UnitOption::Random {
+                    nation: Some("usn".to_owned()),
+                    subtype: None,
+                },
+                UnitOption::Unit(UnitId::from("usn_cg_belknap")),
+                UnitOption::Unit(UnitId::from("usn_cv_kitty_hawk")),
+            ]),
+            UnitOption::Random {
+                nation: Some("usn".to_owned()),
+                subtype: Some(UnitType::Submarine),
+            }
+        ],
     });
-    println!("config: {:?}", mission);
 
     mission.write_environment(&mut config);
 
-    let neutrals = gen::gen_neutrals(&mission.options.n_neutral, &unit_db);
+    let neutrals = gen::gen_units(&unit_db, &mission.options.neutral);
     {
         let options = TaskforceOptions {
             weapon_state: taskforce::WeaponState::Hold,
@@ -109,7 +151,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         println!("{}", taskforce);
     }
 
-    let blues = gen::gen_blues(&mission.options.n_blue, &unit_db);
+    let blues = gen::gen_units(&unit_db, &mission.options.blue);
     {
         let options = TaskforceOptions {
             weapon_state: taskforce::WeaponState::Tight,
@@ -120,7 +162,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         println!("{}", taskforce);
     }
 
-    let reds = gen::gen_reds(&mission.options.n_red, &unit_db);
+    let reds = gen::gen_units(&unit_db, &mission.options.red);
     {
         let options = TaskforceOptions {
             weapon_state: taskforce::WeaponState::Free,
