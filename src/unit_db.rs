@@ -5,41 +5,21 @@ use configparser::ini::Ini;
 use std::{fs, io, path::Path};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum VesselType {
+pub enum UnitType {
     Ship,
     Submarine,
+    Helicopter,
+    FixedWing,
     // TODO: figure out if this is necessary,
     // also consider using Option<VesselType>
     Unknown,
 }
 
-impl From<String> for VesselType {
+impl From<String> for UnitType {
     fn from(value: String) -> Self {
         match value.to_lowercase().as_str() {
             "vessel" => Self::Ship,
             "submarine" => Self::Submarine,
-            _ => Self::Unknown,
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct Vessel {
-    pub id: String,
-    pub nation: String,
-    pub subtype: VesselType,
-}
-
-#[derive(Clone, Debug)]
-pub enum AircraftType {
-    Helicopter,
-    FixedWing,
-    Unknown,
-}
-
-impl From<String> for AircraftType {
-    fn from(value: String) -> Self {
-        match value.to_lowercase().as_str() {
             "helicopter" => Self::Helicopter,
             "aircraft" => Self::FixedWing,
             _ => Self::Unknown,
@@ -48,10 +28,10 @@ impl From<String> for AircraftType {
 }
 
 #[derive(Clone, Debug)]
-pub struct Aircraft {
+pub struct Unit {
     pub id: String,
     pub nation: String,
-    pub subtype: AircraftType,
+    pub subtype: UnitType,
 }
 
 /// Sea Power encodes unit information in the filename, usually structured
@@ -67,8 +47,9 @@ fn load_ini(path: &Path) -> Result<Ini, String> {
     Ok(config)
 }
 
+// TODO: can load unit names from language_en/vessel_names.ini
 fn load_nation_reference() -> Result<HashMap<String, String>, UnitDBError> {
-    let config = load_ini(&dir::original_dir().join("nations_reference.ini"))?;
+    let config = load_ini(&dir::original_dir().join("language_en/nations.ini"))?;
 
     let mut nations = HashMap::new();
     if let Some(map) = config.get_map() {
@@ -89,7 +70,7 @@ fn load_nation_reference() -> Result<HashMap<String, String>, UnitDBError> {
     Ok(nations)
 }
 
-fn load_vessels() -> Result<HashMap<String, Vessel>, UnitDBError> {
+fn load_vessels() -> Result<HashMap<String, Unit>, UnitDBError> {
     let mut vessels = HashMap::new();
     for entry in fs::read_dir(dir::vessel_dir())? {
         let entry = entry?;
@@ -107,22 +88,18 @@ fn load_vessels() -> Result<HashMap<String, Vessel>, UnitDBError> {
             let config = load_ini(&path)?;
             let subtype = config
                 .get("General", "UnitType")
-                .map(|t| VesselType::from(t))
-                .unwrap_or(VesselType::Unknown);
+                .map(|t| UnitType::from(t))
+                .unwrap_or(UnitType::Unknown);
             vessels.insert(
                 id.clone(),
-                Vessel {
-                    id,
-                    nation,
-                    subtype,
-                },
+                Unit { id, nation, subtype, },
             );
         }
     }
     Ok(vessels)
 }
 
-fn load_aircraft() -> Result<HashMap<String, Aircraft>, UnitDBError> {
+fn load_aircraft() -> Result<HashMap<String, Unit>, UnitDBError> {
     Ok(HashMap::new())
 }
 
@@ -148,46 +125,35 @@ impl From<String> for UnitDBError {
 pub struct UnitDB {
     /// map of nation id => nation name
     nations: HashMap<String, String>,
-    /// map of vessel id => vessel
-    vessels: HashMap<String, Vessel>,
-    /// map of aircraft id => vessel
-    aircraft: HashMap<String, Aircraft>,
+    // map of unit id => unit
+    units: HashMap<String, Unit>,
 }
 
 impl UnitDB {
     pub fn new() -> Result<Self, UnitDBError> {
         let nations = load_nation_reference()?;
-        let vessels = load_vessels()?;
-        let aircraft = load_aircraft()?;
-        Ok(Self { nations, vessels, aircraft })
+        let mut units = HashMap::new();
+        units.extend(load_vessels()?);
+        units.extend(load_aircraft()?);
+        Ok(Self { nations, units, })
     }
 
     pub fn nation_name(&self, id: &str) -> Option<&String> {
         self.nations.get(id)
     }
 
-    pub fn all_vessels(&self) -> Vec<&Vessel> {
-        self.vessels.values().collect()
+    pub fn all(&self) -> Vec<&Unit> {
+        self.units.values().collect()
     }
 
-    pub fn vessel_by_id(&self, id: &str) -> Option<&Vessel> {
-        self.vessels.get(id)
+    pub fn by_id(&self, id: &str) -> Option<&Unit> {
+        self.units.get(id)
     }
 
-    pub fn vessels_by_nation(&self, nation: &str) -> Vec<&Vessel> {
-        self
-            .all_vessels()
-            .iter()
+    pub fn by_nation(&self, nation: &str) -> Vec<&Unit> {
+        self.units
+            .values()
             .filter(|v| v.nation == nation)
-            .map(|v| *v)
             .collect()
-    }
-
-    pub fn all_aircraft(&self) -> Vec<&Aircraft> {
-        self.aircraft.values().collect()
-    }
-
-    pub fn aircraft_by_id(&self, id: &str) -> Option<&Aircraft> {
-        self.aircraft.get(id)
     }
 }

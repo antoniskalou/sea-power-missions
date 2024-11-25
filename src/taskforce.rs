@@ -1,6 +1,6 @@
 use configparser::ini::Ini;
 
-use crate::{unit_db::Vessel, Mission};
+use crate::{unit_db::Unit, Mission};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum WeaponState {
@@ -35,7 +35,7 @@ pub struct TaskforceOptions {
 pub struct Taskforce {
     name: String,
     options: TaskforceOptions,
-    vessels: Vec<Vessel>,
+    units: Vec<Unit>,
 }
 
 impl Taskforce {
@@ -43,23 +43,24 @@ impl Taskforce {
         Self::from_vec(name, options, &vec![])
     }
 
-    pub fn from_vec(name: &str, options: TaskforceOptions, vessels: &Vec<&Vessel>) -> Self {
+    pub fn from_vec(name: &str, options: TaskforceOptions, units: &Vec<&Unit>) -> Self {
         Self {
             name: name.to_owned(),
             // TODO: allow providing options
             options,
-            vessels: vessels.iter().map(|v| (*v).clone()).collect::<Vec<_>>(),
+            units: units.iter().map(|v| (*v).clone()).collect::<Vec<_>>(),
         }
     }
 
-    pub fn add(&mut self, vessel: &Vessel) {
-        self.vessels.push(vessel.clone());
+    pub fn add(&mut self, vessel: &Unit) {
+        self.units.push(vessel.clone());
     }
 
     pub fn write_config(&self, config: &mut Ini, mission: &Mission) {
-        let n = self.vessels.len();
+        let n = self.units.len();
         config.set(
             "Mission",
+            // FIXME: don't use Vessel, instead determine type
             &format!("NumberOf{}Vessels", self.name),
             Some(n.to_string()),
         );
@@ -80,9 +81,9 @@ impl Taskforce {
             );
         }
 
-        for (i, vessel) in self.vessels.iter().enumerate() {
+        for (i, vessel) in self.units.iter().enumerate() {
             let section = format!("{}Vessel{}", self.name, i + 1);
-            mission.write_vessel(config, &section, &vessel);
+            mission.write_unit(config, &section, &vessel);
             config.set(
                 &section,
                 "WeaponStatus",
@@ -94,7 +95,7 @@ impl Taskforce {
 
 impl std::fmt::Display for Taskforce {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let vessels = self.vessels
+        let vessels = self.units
             .iter()
             .map(|v| format!("==> {}", v.id.clone()))
             .collect::<Vec<_>>()
@@ -104,7 +105,7 @@ impl std::fmt::Display for Taskforce {
 }
 
 fn formation_str(taskforce: &Taskforce) -> String {
-    let n = taskforce.vessels.len();
+    let n = taskforce.units.len();
     let sections = (0..n)
         .map(|i| format!("{}Vessel{}", taskforce.name, i + 1))
         .collect::<Vec<_>>();

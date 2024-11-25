@@ -9,7 +9,7 @@ use std::error::Error;
 use std::path::Path;
 use std::str;
 use taskforce::{Taskforce, TaskforceOptions};
-use unit_db::{UnitDB, Vessel};
+use unit_db::{UnitDB, Unit};
 
 const MISSION_TEMPLATE: &'static str = include_str!("../resources/mission_template.ini");
 
@@ -50,8 +50,8 @@ impl Mission {
     }
 
     // TODO: move me
-    fn write_vessel(&self, config: &mut Ini, section: &str, vessel: &Vessel) {
-        config.set(&section, "type", Some(vessel.id.clone()));
+    fn write_unit(&self, config: &mut Ini, section: &str, unit: &Unit) {
+        config.set(&section, "type", Some(unit.id.clone()));
         // speed setting
         config.set(&section, "Telegraph", Some(2.to_string()));
         // defaults to "Green"
@@ -88,9 +88,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut config = load_template()?;
 
     let mission = Mission::new(MissionOptions {
-        latlon: (54.0, 26.0),
+        latlon: (54.0, -19.0),
         size: (100, 100),
-        n_neutral: GenOption::MinMax(10, 30),
+        n_neutral: GenOption::MinMax(1, 5),
         n_blue: GenOption::Fixed(5),
         n_red: GenOption::Fixed(5),
     });
