@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use configparser::ini::Ini;
-
 use crate::{unit_db::Unit, Mission};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -28,10 +27,7 @@ pub struct TaskforceOptions {
     pub weapon_state: WeaponState,
 }
 
-// FIXME: duplicate name with unit_db::UnitId
-type UnitId = u32;
-
-pub type Formation = Vec<u32>;
+type Formation = Vec<u32>;
 
 /// A taskforce represents a "side" of the engagement. They can be "Neutral"
 /// or "Taskforce1" and "Taskforce2".
@@ -118,35 +114,38 @@ impl Taskforce {
     }
 }
 
-// impl std::fmt::Display for Taskforce {
-//     // FIXME: this is awful
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         fn format_units(units: &Vec<Unit>) -> String {
-//             units
-//                 .iter()
-//                 .map(|v| format!("==> {}", v.id.clone()))
-//                 .collect::<Vec<_>>()
-//                 .join("\n")
-//         }
-//         let units = format_units(&self.units.values().cloned().collect::<Vec<Unit>>());
-//         let formations = self.formations
-//             .iter()
-//             .enumerate()
-//             .map(|(i, f)| {
-//                 format!("Formation {}\n{}", i + 1, format_units(f))
-//             })
-//             .collect::<Vec<_>>()
-//             .join("\n");
-//         write!(f, "{}\n{}\n{}", self.name, units, formations)
-//     }
-// }
+impl std::fmt::Display for Taskforce {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[{}]\n", self.name)?;
 
-fn formation_str(name: &str, formation: &Formation) -> String {
+        let mut units = self.units.clone();
+        for (i, formation) in self.formations.iter().enumerate() {
+            write!(f, "Formation {}\n", i + 1)?;
+            for id in formation {
+                let unit = units.remove(id).unwrap();
+                write!(f, "\t{} ==> {}\n", id, unit.id)?;
+            }
+        }
+
+        let mut sorted_keys = units.keys().collect::<Vec<_>>();
+        sorted_keys.sort();
+        // whatever is left is a singular unit
+        for id in sorted_keys {
+            // unwrap never fails
+            let unit = units.get(id).unwrap();
+            write!(f, "{} ==> {}\n", id, unit.id)?;
+        }
+
+        Ok(())
+    }
+}
+
+fn formation_str(taskforce: &str, formation: &Formation) -> String {
     let sections = formation.iter()
-        .map(|id| format!("{}Vessel{}", name, id))
+        .map(|id| format!("{}Vessel{}", taskforce, id))
         .collect::<Vec<_>>();
     let formation = sections.join(",");
     // OverrideSpawnPositions allows us to place our units anywhere and the formation
     // will be adjusted by the game on mission start (which is exactly what we want)
-    format!("{formation}|Group Name 1|Circle|1.5|OverrideSpawnPositions")
+    format!("{formation}|Unnamed Group|Circle|1.5|OverrideSpawnPositions")
 }
