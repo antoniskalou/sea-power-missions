@@ -31,11 +31,8 @@ struct MissionOptions {
     latlon: (f32, f32),
     /// the size of the box (w,h) that the mission will take place in.
     size: (u16, u16),
-    /// the maximum number of neutrals to generate
     neutral: Vec<UnitOption>,
-    /// number of friendlies
     blue: Vec<UnitOption>,
-    /// number of hostiles
     red: Vec<UnitOption>,
 }
 

@@ -1,7 +1,6 @@
 use std::collections::HashMap;
-
 use configparser::ini::Ini;
-use crate::{unit_db::Unit, Mission};
+use crate::{unit_db::{Unit, UnitType}, Mission};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum WeaponState {
@@ -47,8 +46,7 @@ impl Taskforce {
         Self {
             name: name.to_owned(),
             options,
-            // IDs start from 1 in the ini files
-            last_unit_id: 1,
+            last_unit_id: 0,
             formations: vec![],
             units: HashMap::new(),
         }
@@ -65,6 +63,45 @@ impl Taskforce {
         self.formations.push(ids);
     }
 
+    pub fn write_config(&self, config: &mut Ini, mission: &Mission) {
+        for utype in UnitType::all() {
+            let units = self.units_by_type(utype);
+            // setup NumberOf<TYPE><TASKFORCE>
+            config.set(
+                "Mission",
+                &format!("NumberOf{}{}", utype.calitalised_plural(), self.name),
+                Some(units.len().to_string()),
+            );
+
+            // create <TASKFORCE><TYPE><ID> where <ID> is reset for each <TYPE>
+            for (id, unit) in units {
+                let subtype = unit.subtype.capitalised_singular();
+                let section = format!("{}{subtype}{id}", self.name);
+                mission.write_unit(config, &section, &unit);
+                config.set(
+                    &section,
+                    "WeaponStatus",
+                    Some(self.options.weapon_state.to_string()),
+                );
+            }
+        }
+
+        // create formations (not type specific)
+        config.set(
+            "Mission",
+            &format!("{}_NumberOfFormations", self.name),
+            Some(self.formations.len().to_string()),
+        );
+        for (i, formation) in self.formations.iter().enumerate() {
+            // formation can use any type of unit
+            config.set(
+                "Mission",
+                &format!("{}_Formation{}", self.name, i + 1),
+                Some(formation_str(&self.name, formation))
+            );
+        }
+    }
+
     fn unit_id(&mut self) -> u32 {
         let id = self.last_unit_id;
         self.last_unit_id += 1;
@@ -77,40 +114,13 @@ impl Taskforce {
         id
     }
 
-    pub fn write_config(&self, config: &mut Ini, mission: &Mission) {
-        config.set(
-            "Mission",
-            // FIXME: don't use Vessel, instead determine type
-            &format!("NumberOf{}Vessels", self.name),
-            Some(self.units.len().to_string()),
-        );
-
-        // TODO: for now units are all either in a formation or they are not
-        // there is no way to specify how many formations should exist and
-        // how large they should be (yet).
-        config.set(
-            "Mission",
-            &format!("{}_NumberOfFormations", self.name),
-            // TODO: figure out if a len of 0 will present a problem
-            Some(self.formations.len().to_string()),
-        );
-        for (i, formation) in self.formations.iter().enumerate() {
-            config.set(
-                "Mission",
-                &format!("{}_Formation{}", self.name, i + 1),
-                Some(formation_str(&self.name, formation))
-            );
-        }
-
-        for (id, vessel) in &self.units {
-            let section = format!("{}Vessel{}", self.name, id);
-            mission.write_unit(config, &section, &vessel);
-            config.set(
-                &section,
-                "WeaponStatus",
-                Some(self.options.weapon_state.to_string()),
-            );
-        }
+    fn units_by_type(&self, utype: UnitType) -> Vec<(u32, &Unit)> {
+        self.units
+            .values()
+            .filter(|unit| unit.subtype == utype)
+            .enumerate()
+            .map(|(i, unit)| ((i + 1) as u32, unit))
+            .collect()
     }
 }
 

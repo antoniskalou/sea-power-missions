@@ -15,6 +15,33 @@ pub enum UnitType {
     Unknown,
 }
 
+impl UnitType {
+    pub fn all() -> [UnitType; 4] {
+        use UnitType::*;
+        [Ship, Submarine, Helicopter, FixedWing]
+    }
+
+    pub fn capitalised_singular(&self) -> String {
+        let str = match self {
+            Self::Ship => "Vessel",
+            Self::Submarine => "Submarine",
+            Self::FixedWing => "Aircraft",
+            Self::Helicopter => "Helicopter",
+            Self::Unknown =>
+                panic!("unknown UnitType can not be coverted to string"),
+        };
+        str.to_owned()
+    }
+
+    pub fn calitalised_plural(&self) -> String {
+        if let Self::FixedWing = self {
+            "Aircraft".to_owned()
+        } else {
+            format!("{}s", self.capitalised_singular())
+        }
+    }
+}
+
 impl From<String> for UnitType {
     fn from(value: String) -> Self {
         match value.to_lowercase().as_str() {
