@@ -1,3 +1,4 @@
+use crate::taskforce::Taskforce;
 use crate::unit_db::{UnitDB, Unit, UnitId, UnitType};
 use rand::{seq::SliceRandom, thread_rng, Rng};
 
@@ -11,6 +12,67 @@ pub enum UnitOption {
     // FIXME: not actually recursive, since a nested
     // formation is not allowed
     Formation(Vec<UnitOption>),
+}
+
+pub fn gen_taskforce(
+    taskforce: &mut Taskforce,
+    unit_db: &UnitDB,
+    options: &Vec<UnitOption>,
+) {
+    for unit in gen_units(unit_db, options) {
+        match unit {
+            UnitOrFormation::Unit(unit) => {
+                taskforce.add(&unit);
+            },
+            UnitOrFormation::Formation(formation) => {
+                taskforce.add_formation(&formation);
+            }
+        }
+    }
+}
+
+type Formation = Vec<Unit>;
+
+#[derive(Clone, Debug)]
+enum UnitOrFormation {
+    Unit(Unit),
+    Formation(Formation),
+}
+
+fn gen_units(
+    unit_db: &UnitDB,
+    options: &Vec<UnitOption>
+) -> Vec<UnitOrFormation> {
+    let mut rng = thread_rng();
+
+    let mut units = vec![];
+    for option in options {
+        match option {
+            UnitOption::Unit(id) => {
+                if let Some(unit) = unit_db.by_id(&id) {
+                    units.push(UnitOrFormation::Unit(unit.clone()));
+                }
+            },
+            UnitOption::Random { nation, subtype } => {
+                let matches = unit_db.search(nation.as_deref(), *subtype);
+                if let Some(unit) = matches.choose(&mut rng) {
+                    units.push(UnitOrFormation::Unit((*unit).clone()));
+                }
+            },
+            UnitOption::Formation(options) => {
+                let new_units = gen_units(&unit_db, options)
+                    .iter()
+                    .filter_map(|u| match u {
+                        UnitOrFormation::Unit(unit) => Some(unit),
+                        UnitOrFormation::Formation(_) => None,
+                    })
+                    .cloned()
+                    .collect();
+                units.push(UnitOrFormation::Formation(new_units));
+            }
+        }
+    }
+    units
 }
 
 #[derive(Debug)]
@@ -49,37 +111,4 @@ pub fn gen_position(size: &(u16, u16)) -> Position {
 
 pub fn gen_heading() -> u16 {
     thread_rng().gen_range(0..360)
-}
-
-pub fn gen_units<'a>(
-    unit_db: &'a UnitDB,
-    options: &'a Vec<UnitOption>
-) -> Vec<&'a Unit> {
-    let mut rng = thread_rng();
-
-    let mut units = vec![];
-    for option in options {
-        match option {
-            UnitOption::Unit(id) => {
-                if let Some(unit) = unit_db.by_id(&id) {
-                    units.push(unit);
-                }
-            },
-            UnitOption::Random { nation, subtype } => {
-                let matches = unit_db.search(nation.as_deref(), *subtype);
-                if let Some(unit) = matches.choose(&mut rng) {
-                    units.push(unit);
-                }
-            },
-            UnitOption::Formation(options) => {
-                // println!("\tformation: {options:?}");
-                // FIXME: currently will ignore formations during config
-                // generation, this needs to be kept around for later
-                let mut new_units = gen_units(&unit_db, options);
-                units.append(&mut new_units);
-                // units.append(gen_units(unit_db, options));
-            }
-        }
-    }
-    units
 }

@@ -117,6 +117,20 @@ fn main() -> Result<(), Box<dyn Error>> {
                 UnitOption::Unit(UnitId::from("wp_bpk_udaloy")),
                 UnitOption::Unit(UnitId::from("wp_rkr_kirov")),
             ]),
+            UnitOption::Formation(vec![
+                UnitOption::Random {
+                    nation: Some("wp".to_owned()),
+                    subtype: Some(UnitType::Ship),
+                },
+                UnitOption::Random {
+                    nation: Some("wp".to_owned()),
+                    subtype: Some(UnitType::Ship),
+                },
+            ]),
+            UnitOption::Random {
+                nation: Some("wp".to_owned()),
+                subtype: Some(UnitType::Submarine),
+            },
             UnitOption::Random {
                 nation: Some("wp".to_owned()),
                 subtype: Some(UnitType::Submarine),
@@ -140,37 +154,34 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     mission.write_environment(&mut config);
 
-    let neutrals = gen::gen_units(&unit_db, &mission.options.neutral);
     {
         let options = TaskforceOptions {
             weapon_state: taskforce::WeaponState::Hold,
-            use_formation: false,
         };
-        let taskforce = Taskforce::from_vec("Neutral", options, &neutrals);
+        let mut taskforce = Taskforce::new("Neutral", options);
+        gen::gen_taskforce(&mut taskforce, &unit_db, &mission.options.neutral);
         taskforce.write_config(&mut config, &mission);
-        println!("{}", taskforce);
+        println!("{:?}", taskforce);
     }
 
-    let blues = gen::gen_units(&unit_db, &mission.options.blue);
     {
         let options = TaskforceOptions {
             weapon_state: taskforce::WeaponState::Tight,
-            use_formation: true,
         };
-        let taskforce = Taskforce::from_vec("Taskforce1", options, &blues);
+        let mut taskforce = Taskforce::new("Taskforce1", options);
+        gen::gen_taskforce(&mut taskforce, &unit_db, &mission.options.blue);
         taskforce.write_config(&mut config, &mission);
-        println!("{}", taskforce);
+        println!("{:?}", taskforce);
     }
 
-    let reds = gen::gen_units(&unit_db, &mission.options.red);
     {
         let options = TaskforceOptions {
             weapon_state: taskforce::WeaponState::Free,
-            use_formation: true,
         };
-        let taskforce = Taskforce::from_vec("Taskforce2", options, &reds);
+        let mut taskforce = Taskforce::new("Taskforce2", options);
+        gen::gen_taskforce(&mut taskforce, &unit_db, &mission.options.red);
         taskforce.write_config(&mut config, &mission);
-        println!("{}", taskforce);
+        println!("{:?}", taskforce);
     }
 
     write_config(&mission_path, config)?;
