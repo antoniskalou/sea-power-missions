@@ -26,7 +26,7 @@ pub struct TaskforceOptions {
     pub weapon_state: WeaponState,
 }
 
-type Formation = Vec<u32>;
+type Formation = Vec<(UnitType, usize)>;
 
 /// A taskforce represents a "side" of the engagement. They can be "Neutral"
 /// or "Taskforce1" and "Taskforce2".
@@ -36,19 +36,23 @@ type Formation = Vec<u32>;
 pub struct Taskforce {
     name: String,
     options: TaskforceOptions,
-    last_unit_id: u32,
-    units: HashMap<u32, Unit>,
+    units: HashMap<UnitType, Vec<Unit>>,
     formations: Vec<Formation>,
 }
 
 impl Taskforce {
     pub fn new(name: &str, options: TaskforceOptions) -> Self {
+        let mut units = HashMap::new();
+        // initialise all different types of units
+        for utype in UnitType::all() {
+            units.insert(utype, vec![]);
+        }
+
         Self {
             name: name.to_owned(),
-            options,
-            last_unit_id: 0,
             formations: vec![],
-            units: HashMap::new(),
+            options,
+            units,
         }
     }
 
@@ -58,25 +62,25 @@ impl Taskforce {
 
     pub fn add_formation(&mut self, units: &Vec<Unit>) {
         let ids = units.iter()
-            .map(|u| self.add_with_id(u))
+            .map(|u| (u.subtype, self.add_with_id(u)))
             .collect();
         self.formations.push(ids);
     }
 
     pub fn write_config(&self, config: &mut Ini, mission: &Mission) {
         for utype in UnitType::all() {
-            let units = self.units_by_type(utype);
+            let units = self.units.get(&utype).unwrap();
             // setup NumberOf<TYPE><TASKFORCE>
             config.set(
                 "Mission",
-                &format!("NumberOf{}{}", utype.calitalised_plural(), self.name),
+                &format!("NumberOf{}{}", self.name, utype.calitalised_plural()),
                 Some(units.len().to_string()),
             );
 
             // create <TASKFORCE><TYPE><ID> where <ID> is reset for each <TYPE>
-            for (id, unit) in units {
+            for (idx, unit) in units.iter().enumerate() {
                 let subtype = unit.subtype.capitalised_singular();
-                let section = format!("{}{subtype}{id}", self.name);
+                let section = format!("{}{subtype}{}", self.name, idx + 1);
                 mission.write_unit(config, &section, &unit);
                 config.set(
                     &section,
@@ -92,67 +96,57 @@ impl Taskforce {
             &format!("{}_NumberOfFormations", self.name),
             Some(self.formations.len().to_string()),
         );
-        for (i, formation) in self.formations.iter().enumerate() {
+        for (f_idx, formation) in self.formations.iter().enumerate() {
             // formation can use any type of unit
             config.set(
                 "Mission",
-                &format!("{}_Formation{}", self.name, i + 1),
+                &format!("{}_Formation{}", self.name, f_idx + 1),
                 Some(formation_str(&self.name, formation))
             );
         }
     }
 
-    fn unit_id(&mut self) -> u32 {
-        let id = self.last_unit_id;
-        self.last_unit_id += 1;
-        id
-    }
-
-    fn add_with_id(&mut self, unit: &Unit) -> u32 {
-        let id = self.unit_id();
-        self.units.insert(id, unit.clone());
-        id
-    }
-
-    fn units_by_type(&self, utype: UnitType) -> Vec<(u32, &Unit)> {
-        self.units
-            .values()
-            .filter(|unit| unit.subtype == utype)
-            .enumerate()
-            .map(|(i, unit)| ((i + 1) as u32, unit))
-            .collect()
+    fn add_with_id(&mut self, unit: &Unit) -> usize {
+        let units = self.units.get_mut(&unit.subtype).unwrap();
+        // TODO: figure out a better way of returning the last inserted ID
+        let idx = units.len();
+        units.push(unit.clone());
+        idx
     }
 }
 
-impl std::fmt::Display for Taskforce {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[{}]\n", self.name)?;
+// impl std::fmt::Display for Taskforce {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         write!(f, "[{}]\n", self.name)?;
 
-        let mut units = self.units.clone();
-        for (i, formation) in self.formations.iter().enumerate() {
-            write!(f, "Formation {}\n", i + 1)?;
-            for id in formation {
-                let unit = units.remove(id).unwrap();
-                write!(f, "\t{} ==> {}\n", id, unit.id)?;
-            }
-        }
+//         let mut units = self.units.clone();
+//         for (utype, units) in self.formations.iter() {
+//             write!(f, "Formation {}\n", i + 1)?;
+//             for idx in units {
+//                 let unit = units.remove(id).unwrap();
+//                 write!(f, "\t{} ==> {}\n", id, unit.id)?;
+//             }
+//         }
 
-        let mut sorted_keys = units.keys().collect::<Vec<_>>();
-        sorted_keys.sort();
-        // whatever is left is a singular unit
-        for id in sorted_keys {
-            // unwrap never fails
-            let unit = units.get(id).unwrap();
-            write!(f, "{} ==> {}\n", id, unit.id)?;
-        }
+//         let mut sorted_keys = units.keys().collect::<Vec<_>>();
+//         sorted_keys.sort();
+//         // whatever is left is a singular unit
+//         for id in sorted_keys {
+//             // unwrap never fails
+//             let unit = units.get(id).unwrap();
+//             write!(f, "{} ==> {}\n", id, unit.id)?;
+//         }
 
-        Ok(())
-    }
-}
+//         Ok(())
+//     }
+// }
 
 fn formation_str(taskforce: &str, formation: &Formation) -> String {
     let sections = formation.iter()
-        .map(|id| format!("{}Vessel{}", taskforce, id))
+        .map(|(utype, idx)| {
+            let subtype = utype.capitalised_singular();
+            format!("{taskforce}{subtype}{}", idx + 1)
+        })
         .collect::<Vec<_>>();
     let formation = sections.join(",");
     // OverrideSpawnPositions allows us to place our units anywhere and the formation

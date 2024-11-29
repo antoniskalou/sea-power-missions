@@ -4,10 +4,10 @@
 
 # Todo
 
-- [ ] Formations
-- [ ] Refactor code to use UnitDB
+- [X] Formations
+- [X] Refactor code to use UnitDB
 
 # Bugs
 
-- [ ] submarine spawn surfaced -- this is because we need to use Submarine instead of
+- [X] submarine spawn surfaced -- this is because we need to use Submarine instead of
 Vessel in the .ini

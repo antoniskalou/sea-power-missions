@@ -160,7 +160,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         let mut taskforce = Taskforce::new("Neutral", options);
         gen::gen_taskforce(&mut taskforce, &unit_db, &mission.options.neutral);
         taskforce.write_config(&mut config, &mission);
-        println!("{}", taskforce);
+        println!("{:?}", taskforce);
     }
 
     {
@@ -170,7 +170,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         let mut taskforce = Taskforce::new("Taskforce1", options);
         gen::gen_taskforce(&mut taskforce, &unit_db, &mission.options.blue);
         taskforce.write_config(&mut config, &mission);
-        println!("{}", taskforce);
+        println!("{:?}", taskforce);
     }
 
     {
@@ -180,7 +180,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         let mut taskforce = Taskforce::new("Taskforce2", options);
         gen::gen_taskforce(&mut taskforce, &unit_db, &mission.options.red);
         taskforce.write_config(&mut config, &mission);
-        println!("{}", taskforce);
+        println!("{:?}", taskforce);
     }
 
     write_config(&mission_path, config)?;
