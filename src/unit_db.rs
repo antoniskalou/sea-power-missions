@@ -60,7 +60,7 @@ pub type UnitId = String;
 pub struct Unit {
     pub id: UnitId,
     pub nation: String,
-    pub subtype: UnitType,
+    pub utype: UnitType,
 }
 
 /// Sea Power encodes unit information in the filename, usually structured
@@ -115,13 +115,13 @@ fn load_vessels() -> Result<HashMap<String, Unit>, UnitDbError> {
             let id = id.to_owned();
             let nation = nation.to_owned();
             let config = load_ini(&path)?;
-            let subtype = config
+            let utype = config
                 .get("General", "UnitType")
                 .map(|t| UnitType::from(t))
                 .unwrap_or(UnitType::Unknown);
             vessels.insert(
                 id.clone(),
-                Unit { id, nation, subtype, },
+                Unit { id, nation, utype, },
             );
         }
     }
@@ -186,22 +186,22 @@ impl UnitDb {
             .collect()
     }
 
-    pub fn by_subtype(&self, subtype: UnitType) -> Vec<&Unit> {
+    pub fn by_type(&self, utype: UnitType) -> Vec<&Unit> {
         self.units
             .values()
-            .filter(|v| v.subtype == subtype)
+            .filter(|v| v.utype == utype)
             .collect()
     }
 
     pub fn search(
         &self,
         nation: Option<&str>,
-        subtype: Option<UnitType>
+        utype: Option<UnitType>
     ) -> Vec<&Unit> {
         self.all()
             .iter()
             .filter(|v| nation.map(|n| v.nation == n).unwrap_or(true))
-            .filter(|v| subtype.map(|s| v.subtype == s).unwrap_or(true))
+            .filter(|v| utype.map(|s| v.utype == s).unwrap_or(true))
             .map(|v| *v)
             .collect()
     }

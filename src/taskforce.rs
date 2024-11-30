@@ -62,7 +62,7 @@ impl Taskforce {
 
     pub fn add_formation(&mut self, units: &Vec<Unit>) {
         let ids = units.iter()
-            .map(|u| (u.subtype, self.add_with_id(u)))
+            .map(|u| (u.utype, self.add_with_id(u)))
             .collect();
         self.formations.push(ids);
     }
@@ -79,8 +79,8 @@ impl Taskforce {
 
             // create <TASKFORCE><TYPE><ID> where <ID> is reset for each <TYPE>
             for (idx, unit) in units.iter().enumerate() {
-                let subtype = unit.subtype.capitalised_singular();
-                let section = format!("{}{subtype}{}", self.name, idx + 1);
+                let utype = unit.utype.capitalised_singular();
+                let section = format!("{}{utype}{}", self.name, idx + 1);
                 mission.write_unit(config, &section, &unit);
                 config.set(
                     &section,
@@ -107,7 +107,7 @@ impl Taskforce {
     }
 
     fn add_with_id(&mut self, unit: &Unit) -> usize {
-        let units = self.units.get_mut(&unit.subtype).unwrap();
+        let units = self.units.get_mut(&unit.utype).unwrap();
         // TODO: figure out a better way of returning the last inserted ID
         let idx = units.len();
         units.push(unit.clone());
@@ -144,8 +144,8 @@ impl Taskforce {
 fn formation_str(taskforce: &str, formation: &Formation) -> String {
     let sections = formation.iter()
         .map(|(utype, idx)| {
-            let subtype = utype.capitalised_singular();
-            format!("{taskforce}{subtype}{}", idx + 1)
+            let utype = utype.capitalised_singular();
+            format!("{taskforce}{utype}{}", idx + 1)
         })
         .collect::<Vec<_>>();
     let formation = sections.join(",");
