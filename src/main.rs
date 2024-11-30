@@ -8,7 +8,7 @@ use std::error::Error;
 use std::path::Path;
 use std::str;
 use taskforce::{Taskforce, TaskforceOptions};
-use unit_db::{UnitDB, Unit, UnitId, UnitType};
+use unit_db::{UnitDb, Unit, UnitId, UnitType};
 use gen::UnitOption;
 
 const MISSION_TEMPLATE: &'static str = include_str!("../resources/mission_template.ini");
@@ -78,7 +78,7 @@ impl Mission {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let unit_db = UnitDB::new().expect("failed to initialise UnitBD");
+    let unit_db = UnitDb::new().expect("failed to initialise UnitBD");
     // println!("{:?}", unit_db);
 
     let mission_path = dir::mission_dir().join("Random Mission.ini");

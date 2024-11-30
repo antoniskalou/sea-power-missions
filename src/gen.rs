@@ -1,5 +1,5 @@
 use crate::taskforce::Taskforce;
-use crate::unit_db::{UnitDB, Unit, UnitId, UnitType};
+use crate::unit_db::{UnitDb, Unit, UnitId, UnitType};
 use rand::{seq::SliceRandom, thread_rng, Rng};
 
 #[derive(Clone, Debug)]
@@ -16,7 +16,7 @@ pub enum UnitOption {
 
 pub fn gen_taskforce(
     taskforce: &mut Taskforce,
-    unit_db: &UnitDB,
+    unit_db: &UnitDb,
     options: &Vec<UnitOption>,
 ) {
     for unit in gen_units(unit_db, options) {
@@ -40,7 +40,7 @@ enum UnitOrFormation {
 }
 
 fn gen_units(
-    unit_db: &UnitDB,
+    unit_db: &UnitDb,
     options: &Vec<UnitOption>
 ) -> Vec<UnitOrFormation> {
     let mut rng = thread_rng();

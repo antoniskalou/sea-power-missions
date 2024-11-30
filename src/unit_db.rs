@@ -77,7 +77,7 @@ fn load_ini(path: &Path) -> Result<Ini, String> {
 }
 
 // TODO: can load unit names from language_en/vessel_names.ini
-fn load_nation_reference() -> Result<HashMap<String, String>, UnitDBError> {
+fn load_nation_reference() -> Result<HashMap<String, String>, UnitDbError> {
     let config = load_ini(&dir::original_dir().join("language_en/nations.ini"))?;
 
     let mut nations = HashMap::new();
@@ -99,7 +99,7 @@ fn load_nation_reference() -> Result<HashMap<String, String>, UnitDBError> {
     Ok(nations)
 }
 
-fn load_vessels() -> Result<HashMap<String, Unit>, UnitDBError> {
+fn load_vessels() -> Result<HashMap<String, Unit>, UnitDbError> {
     let mut vessels = HashMap::new();
     for entry in fs::read_dir(dir::vessel_dir())? {
         let entry = entry?;
@@ -128,38 +128,38 @@ fn load_vessels() -> Result<HashMap<String, Unit>, UnitDBError> {
     Ok(vessels)
 }
 
-fn load_aircraft() -> Result<HashMap<String, Unit>, UnitDBError> {
+fn load_aircraft() -> Result<HashMap<String, Unit>, UnitDbError> {
     Ok(HashMap::new())
 }
 
 #[derive(Debug)]
-pub enum UnitDBError {
+pub enum UnitDbError {
     IOError(io::Error),
     ParseError(String),
 }
 
-impl From<io::Error> for UnitDBError {
+impl From<io::Error> for UnitDbError {
     fn from(value: io::Error) -> Self {
         Self::IOError(value)
     }
 }
 
-impl From<String> for UnitDBError {
+impl From<String> for UnitDbError {
     fn from(value: String) -> Self {
         Self::ParseError(value)
     }
 }
 
 #[derive(Debug)]
-pub struct UnitDB {
+pub struct UnitDb {
     /// map of nation id => nation name
     nations: HashMap<String, String>,
     // map of unit id => unit
     units: HashMap<String, Unit>,
 }
 
-impl UnitDB {
-    pub fn new() -> Result<Self, UnitDBError> {
+impl UnitDb {
+    pub fn new() -> Result<Self, UnitDbError> {
         let nations = load_nation_reference()?;
         let mut units = HashMap::new();
         units.extend(load_vessels()?);
