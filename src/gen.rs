@@ -1,4 +1,3 @@
-use crate::taskforce::Taskforce;
 use crate::unit_db::{UnitDb, Unit, UnitId, UnitType};
 use rand::{seq::SliceRandom, thread_rng, Rng};
 
@@ -14,32 +13,15 @@ pub enum UnitOption {
     Formation(Vec<UnitOption>),
 }
 
-pub fn gen_taskforce(
-    taskforce: &mut Taskforce,
-    unit_db: &UnitDb,
-    options: &Vec<UnitOption>,
-) {
-    for unit in gen_units(unit_db, options) {
-        match unit {
-            UnitOrFormation::Unit(unit) => {
-                taskforce.add(&unit);
-            },
-            UnitOrFormation::Formation(formation) => {
-                taskforce.add_formation(&formation);
-            }
-        }
-    }
-}
-
-type Formation = Vec<Unit>;
+pub type Formation = Vec<Unit>;
 
 #[derive(Clone, Debug)]
-enum UnitOrFormation {
+pub enum UnitOrFormation {
     Unit(Unit),
     Formation(Formation),
 }
 
-fn gen_units(
+pub fn gen_units(
     unit_db: &UnitDb,
     options: &Vec<UnitOption>
 ) -> Vec<UnitOrFormation> {

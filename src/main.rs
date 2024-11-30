@@ -86,7 +86,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mission = Mission::new(MissionOptions {
         latlon: (54.0, -19.0),
-        size: (100, 100),
+        size: (250, 250),
         neutral: vec![
             UnitOption::Random {
                 nation: Some("civ".to_owned()),
@@ -104,15 +104,27 @@ fn main() -> Result<(), Box<dyn Error>> {
                 nation: Some("civ".to_owned()),
                 subtype: None
             },
+            UnitOption::Random {
+                nation: Some("civ".to_owned()),
+                subtype: None
+            },
+            UnitOption::Random {
+                nation: Some("civ".to_owned()),
+                subtype: None
+            },
+            UnitOption::Random {
+                nation: Some("civ".to_owned()),
+                subtype: None
+            },
         ],
         blue: vec![
             UnitOption::Formation(vec![
+                UnitOption::Unit(UnitId::from("wp_bpk_udaloy")),
+                UnitOption::Unit(UnitId::from("wp_rkr_kirov")),
                 UnitOption::Random {
                     nation: Some("wp".to_owned()),
                     subtype: Some(UnitType::Ship),
                 },
-                UnitOption::Unit(UnitId::from("wp_bpk_udaloy")),
-                UnitOption::Unit(UnitId::from("wp_rkr_kirov")),
                 UnitOption::Random {
                     nation: Some("wp".to_owned()),
                     subtype: Some(UnitType::Ship),
@@ -133,15 +145,23 @@ fn main() -> Result<(), Box<dyn Error>> {
         ],
         red: vec![
             UnitOption::Formation(vec![
-                UnitOption::Random {
-                    nation: Some("usn".to_owned()),
-                    subtype: Some(UnitType::Submarine),
-                },
                 UnitOption::Unit(UnitId::from("usn_cg_belknap")),
                 UnitOption::Unit(UnitId::from("usn_cv_kitty_hawk")),
                 UnitOption::Random {
                     nation: Some("usn".to_owned()),
-                    subtype: None,
+                    subtype: Some(UnitType::Ship),
+                },
+                UnitOption::Random {
+                    nation: Some("usn".to_owned()),
+                    subtype: Some(UnitType::Ship),
+                },
+                UnitOption::Random {
+                    nation: Some("usn".to_owned()),
+                    subtype: Some(UnitType::Ship),
+                },
+                UnitOption::Random {
+                    nation: Some("usn".to_owned()),
+                    subtype: Some(UnitType::Ship),
                 },
             ]),
             UnitOption::Random {
@@ -157,8 +177,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         let options = TaskforceOptions {
             weapon_state: taskforce::WeaponState::Hold,
         };
-        let mut taskforce = Taskforce::new("Neutral", options);
-        gen::gen_taskforce(&mut taskforce, &unit_db, &mission.options.neutral);
+        let units = gen::gen_units(&unit_db, &mission.options.neutral);
+        let taskforce = Taskforce::new("Neutral", &units, options);
         taskforce.write_config(&mut config, &mission);
         println!("{:?}", taskforce);
     }
@@ -167,8 +187,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         let options = TaskforceOptions {
             weapon_state: taskforce::WeaponState::Tight,
         };
-        let mut taskforce = Taskforce::new("Taskforce1", options);
-        gen::gen_taskforce(&mut taskforce, &unit_db, &mission.options.blue);
+        let units = gen::gen_units(&unit_db, &mission.options.blue);
+        let taskforce = Taskforce::new("Taskforce1", &units, options);
         taskforce.write_config(&mut config, &mission);
         println!("{:?}", taskforce);
     }
@@ -177,8 +197,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         let options = TaskforceOptions {
             weapon_state: taskforce::WeaponState::Free,
         };
-        let mut taskforce = Taskforce::new("Taskforce2", options);
-        gen::gen_taskforce(&mut taskforce, &unit_db, &mission.options.red);
+        let units = gen::gen_units(&unit_db, &mission.options.red);
+        let taskforce = Taskforce::new("Taskforce2", &units, options);
         taskforce.write_config(&mut config, &mission);
         println!("{:?}", taskforce);
     }

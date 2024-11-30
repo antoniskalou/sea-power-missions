@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use configparser::ini::Ini;
-use crate::{unit_db::{Unit, UnitType}, Mission};
+use crate::{gen::UnitOrFormation, unit_db::{Unit, UnitType}, Mission};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum WeaponState {
@@ -41,35 +41,48 @@ pub struct Taskforce {
 }
 
 impl Taskforce {
-    pub fn new(name: &str, options: TaskforceOptions) -> Self {
-        let mut units = HashMap::new();
-        // initialise all different types of units
-        for utype in UnitType::all() {
-            units.insert(utype, vec![]);
+    pub fn new(
+        name: &str,
+        units_or_formations: &Vec<UnitOrFormation>,
+        options: TaskforceOptions
+    ) -> Self {
+        let mut units = HashMap::<UnitType, Vec<Unit>>::new();
+        let mut formations = vec![];
+        for unit in units_or_formations {
+            match unit {
+                UnitOrFormation::Unit(unit) => {
+                    units.entry(unit.utype)
+                        .and_modify(|units| units.push(unit.clone()))
+                        .or_insert_with(|| vec![unit.clone()]);
+                }
+                UnitOrFormation::Formation(formation) => {
+                    let ids = formation
+                        .iter()
+                        .map(|unit| {
+                            let idx = units.get(&unit.utype)
+                                .map(|v| v.len())
+                                .unwrap_or(0);
+                            units.entry(unit.utype)
+                                .and_modify(|units| units.push(unit.clone()))
+                                .or_insert_with(|| vec![unit.clone()]);
+                            (unit.utype, idx)
+                        })
+                        .collect();
+                    formations.push(ids);
+                }
+            }
         }
 
         Self {
             name: name.to_owned(),
-            formations: vec![],
+            formations,
             options,
             units,
         }
     }
 
-    pub fn add(&mut self, unit: &Unit) {
-        self.add_with_id(unit);
-    }
-
-    pub fn add_formation(&mut self, units: &Vec<Unit>) {
-        let ids = units.iter()
-            .map(|u| (u.utype, self.add_with_id(u)))
-            .collect();
-        self.formations.push(ids);
-    }
-
     pub fn write_config(&self, config: &mut Ini, mission: &Mission) {
-        for utype in UnitType::all() {
-            let units = self.units.get(&utype).unwrap();
+        for (utype, units) in &self.units {
             // setup NumberOf<TYPE><TASKFORCE>
             config.set(
                 "Mission",
@@ -104,14 +117,6 @@ impl Taskforce {
                 Some(formation_str(&self.name, formation))
             );
         }
-    }
-
-    fn add_with_id(&mut self, unit: &Unit) -> usize {
-        let units = self.units.get_mut(&unit.utype).unwrap();
-        // TODO: figure out a better way of returning the last inserted ID
-        let idx = units.len();
-        units.push(unit.clone());
-        idx
     }
 }
 
