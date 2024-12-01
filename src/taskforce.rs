@@ -26,7 +26,7 @@ pub struct TaskforceOptions {
     pub weapon_state: WeaponState,
 }
 
-type Formation = Vec<(UnitType, usize)>;
+type UnitReference = (UnitType, usize);
 
 /// A taskforce represents a "side" of the engagement. They can be "Neutral"
 /// or "Taskforce1" and "Taskforce2".
@@ -37,7 +37,7 @@ pub struct Taskforce {
     name: String,
     options: TaskforceOptions,
     units: HashMap<UnitType, Vec<Unit>>,
-    formations: Vec<Formation>,
+    formations: Vec<Vec<UnitReference>>,
 }
 
 impl Taskforce {
@@ -52,20 +52,18 @@ impl Taskforce {
             match unit {
                 UnitOrFormation::Unit(unit) => {
                     units.entry(unit.utype)
-                        .and_modify(|units| units.push(unit.clone()))
-                        .or_insert_with(|| vec![unit.clone()]);
+                        .or_insert_with(Vec::new)
+                        .push(unit.clone());
                 }
                 UnitOrFormation::Formation(formation) => {
                     let ids = formation
                         .iter()
                         .map(|unit| {
-                            let idx = units.get(&unit.utype)
-                                .map(|v| v.len())
-                                .unwrap_or(0);
-                            units.entry(unit.utype)
-                                .and_modify(|units| units.push(unit.clone()))
-                                .or_insert_with(|| vec![unit.clone()]);
-                            (unit.utype, idx)
+                            let unit_list = units.entry(unit.utype)
+                                .or_insert_with(Vec::new);
+                            let index = unit_list.len();
+                            unit_list.push(unit.clone());
+                            (unit.utype, index)
                         })
                         .collect();
                     formations.push(ids);
@@ -146,7 +144,7 @@ impl Taskforce {
 //     }
 // }
 
-fn formation_str(taskforce: &str, formation: &Formation) -> String {
+fn formation_str(taskforce: &str, formation: &Vec<UnitReference>) -> String {
     let sections = formation.iter()
         .map(|(utype, idx)| {
             let utype = utype.capitalised_singular();
