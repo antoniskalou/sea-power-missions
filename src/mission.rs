@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
 use configparser::ini::Ini;
+use rand::{seq::SliceRandom, thread_rng, Rng};
 
-use crate::unit_db::{UnitId, UnitType};
+use crate::unit_db::{UnitDb, UnitId, UnitType};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum WeaponState {
@@ -28,7 +29,7 @@ pub enum UnitOption {
     Unit(UnitId),
     Random {
         nation: Option<String>,
-        subtype: Option<UnitType>,
+        utype: Option<UnitType>,
     },
 }
 
@@ -61,14 +62,14 @@ impl Unit {
 
 #[derive(Clone, Debug)]
 pub struct FormationOption {
-    units: Vec<UnitOption>,
+    pub units: Vec<UnitOption>,
 }
 
 #[derive(Clone, Debug)]
 pub struct TaskforceOptions {
-    weapon_state: WeaponState,
-    units: Vec<UnitOption>,
-    formations: Vec<FormationOption>,
+    pub weapon_state: WeaponState,
+    pub units: Vec<UnitOption>,
+    pub formations: Vec<FormationOption>,
 }
 
 type UnitReference = (UnitType, usize);
@@ -82,11 +83,40 @@ pub struct Taskforce {
 }
 
 impl Taskforce {
-    pub fn new(name: &str, options: TaskforceOptions) -> Self {
+    pub fn new(unit_db: &UnitDb, name: &str, options: TaskforceOptions) -> Self {
+        let mut units = HashMap::new();
+        for unit_opt in &options.units {
+            match unit_opt {
+                UnitOption::Unit(id) => {
+                    if let Some(unit) = unit_db.by_id(&id) {
+                        units.entry(unit.utype)
+                            .or_insert_with(Vec::new)
+                            .push(Unit {
+                                id: unit.id.clone(),
+                                heading: 0,
+                                position: (0., 0.),
+                            });
+                    }
+                }
+                UnitOption::Random { nation, utype } => {
+                    let matches = unit_db.search(nation.as_deref(), *utype);
+                    if let Some(unit) = matches.choose(&mut thread_rng()) {
+                        units.entry(unit.utype)
+                            .or_insert_with(Vec::new)
+                            .push(Unit {
+                                id: unit.id.clone(),
+                                heading: 0,
+                                position: (0., 0.),
+                            });
+                    }
+                }
+            }
+        }
+
         Self {
             options,
             name: name.to_owned(),
-            units: HashMap::new(),
+            units,
             formations: vec![],
         }
     }
@@ -144,18 +174,19 @@ fn formation_str(taskforce: &str, formation: &Vec<UnitReference>) -> String {
 }
 
 #[derive(Debug)]
-struct MissionOptions {
+pub struct MissionOptions {
     /// the map center latitude and logitude
-    latlon: (f32, f32),
+    pub latlon: (f32, f32),
     /// the size of the box (w,h) that the mission will take place in.
-    size: (u16, u16),
-    neutral: TaskforceOptions,
-    blue: TaskforceOptions,
-    red: TaskforceOptions,
+    pub size: (u16, u16),
+    pub neutral: TaskforceOptions,
+    pub blue: TaskforceOptions,
+    pub red: TaskforceOptions,
+    // TODO: add environment config
 }
 
 #[derive(Debug)]
-struct Mission {
+pub struct Mission {
     options: MissionOptions,
     neutral: Taskforce,
     blue: Taskforce,
@@ -163,10 +194,10 @@ struct Mission {
 }
 
 impl Mission {
-    pub fn new(options: MissionOptions) -> Self {
-        let neutral = Taskforce::new("Neutral", options.neutral.clone());
-        let blue = Taskforce::new("Taskforce1", options.blue.clone());
-        let red = Taskforce::new("Taskforce2", options.red.clone());
+    pub fn new(unit_db: &UnitDb, options: MissionOptions) -> Self {
+        let neutral = Taskforce::new(unit_db, "Neutral", options.neutral.clone());
+        let blue = Taskforce::new(unit_db, "Taskforce1", options.blue.clone());
+        let red = Taskforce::new(unit_db, "Taskforce2", options.red.clone());
         Self { options, neutral, blue, red }
     }
 
@@ -189,40 +220,4 @@ impl Mission {
             Some(self.options.latlon.1.to_string())
         );
     }
-}
-
-#[test]
-fn test_mission_new() {
-    let mission = Mission::new(MissionOptions {
-        latlon: (12., 12.),
-        size: (100, 100),
-        neutral: TaskforceOptions {
-            weapon_state: WeaponState::Hold,
-            units: vec![
-                UnitOption::Unit("civ_ms_kommunist".to_owned()),
-            ],
-            formations: vec![],
-        },
-        blue: TaskforceOptions {
-            weapon_state: WeaponState::Tight,
-            units: vec![
-                UnitOption::Unit("wp_rkr_kirov".to_owned()),
-            ],
-            formations: vec![
-                FormationOption {
-                    units: vec![
-                        UnitOption::Unit("wp_rkr_kirov".to_owned()),
-                    ]
-                }
-            ],
-        },
-        red: TaskforceOptions {
-            weapon_state: WeaponState::Free,
-            units: vec![
-                UnitOption::Random { nation: Some("usn".to_owned()), subtype: None }
-            ],
-            formations: vec![],
-        }
-    });
-    println!("{:?}", mission);
 }
