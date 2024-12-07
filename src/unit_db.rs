@@ -27,8 +27,7 @@ impl UnitType {
             Self::Submarine => "Submarine",
             Self::FixedWing => "Aircraft",
             Self::Helicopter => "Helicopter",
-            Self::Unknown =>
-                panic!("unknown UnitType can not be coverted to string"),
+            Self::Unknown => panic!("unknown UnitType can not be coverted to string"),
         };
         str.to_owned()
     }
@@ -83,17 +82,11 @@ fn load_nation_reference() -> Result<HashMap<String, String>, UnitDbError> {
     let mut nations = HashMap::new();
     if let Some(map) = config.get_map() {
         for (_, nation) in map {
-            let prefix = nation.get("nationprefix")
-                .map(|o| (*o).clone())
-                .flatten();
-            let name = nation.get("nationname")
-                .map(|o| (*o).clone())
-                .flatten();
-            prefix
-                .zip(name)
-                .map(|(prefix, name)| {
-                    nations.insert(prefix, name);
-                });
+            let prefix = nation.get("nationprefix").map(|o| (*o).clone()).flatten();
+            let name = nation.get("nationname").map(|o| (*o).clone()).flatten();
+            prefix.zip(name).map(|(prefix, name)| {
+                nations.insert(prefix, name);
+            });
         }
     }
     Ok(nations)
@@ -119,10 +112,7 @@ fn load_vessels() -> Result<HashMap<String, Unit>, UnitDbError> {
                 .get("General", "UnitType")
                 .map(|t| UnitType::from(t))
                 .unwrap_or(UnitType::Unknown);
-            vessels.insert(
-                id.clone(),
-                Unit { id, nation, utype, },
-            );
+            vessels.insert(id.clone(), Unit { id, nation, utype });
         }
     }
     Ok(vessels)
@@ -164,7 +154,7 @@ impl UnitDb {
         let mut units = HashMap::new();
         units.extend(load_vessels()?);
         units.extend(load_aircraft()?);
-        Ok(Self { nations, units, })
+        Ok(Self { nations, units })
     }
 
     pub fn nation_name(&self, id: &str) -> Option<&String> {
@@ -180,24 +170,14 @@ impl UnitDb {
     }
 
     pub fn by_nation(&self, nation: &str) -> Vec<&Unit> {
-        self.units
-            .values()
-            .filter(|v| v.nation == nation)
-            .collect()
+        self.units.values().filter(|v| v.nation == nation).collect()
     }
 
     pub fn by_type(&self, utype: UnitType) -> Vec<&Unit> {
-        self.units
-            .values()
-            .filter(|v| v.utype == utype)
-            .collect()
+        self.units.values().filter(|v| v.utype == utype).collect()
     }
 
-    pub fn search(
-        &self,
-        nation: Option<&str>,
-        utype: Option<UnitType>
-    ) -> Vec<&Unit> {
+    pub fn search(&self, nation: Option<&str>, utype: Option<UnitType>) -> Vec<&Unit> {
         self.all()
             .iter()
             .filter(|v| nation.map(|n| v.nation == n).unwrap_or(true))

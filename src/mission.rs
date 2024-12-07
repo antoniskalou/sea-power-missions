@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use configparser::ini::Ini;
 use rand::{seq::SliceRandom, thread_rng, Rng};
 
-use crate::unit_db::{UnitDb, UnitId, UnitType};
+use crate::unit_db::{self, UnitDb, UnitId, UnitType};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum WeaponState {
@@ -33,7 +33,7 @@ pub enum UnitOption {
     },
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Unit {
     id: String,
     heading: u16,
@@ -54,7 +54,7 @@ impl Unit {
 
         {
             let (x, y) = self.position;
-            let position_str = format!("{y},0,{x}");
+            let position_str = format!("{x},0,{y}");
             config.set(&section, "RelativePositionInNM", Some(position_str));
         }
     }
@@ -85,39 +85,19 @@ pub struct Taskforce {
 impl Taskforce {
     pub fn new(unit_db: &UnitDb, name: &str, options: TaskforceOptions) -> Self {
         let mut units = HashMap::new();
-        for unit_opt in &options.units {
-            match unit_opt {
-                UnitOption::Unit(id) => {
-                    if let Some(unit) = unit_db.by_id(&id) {
-                        units.entry(unit.utype)
-                            .or_insert_with(Vec::new)
-                            .push(Unit {
-                                id: unit.id.clone(),
-                                heading: 0,
-                                position: (0., 0.),
-                            });
-                    }
-                }
-                UnitOption::Random { nation, utype } => {
-                    let matches = unit_db.search(nation.as_deref(), *utype);
-                    if let Some(unit) = matches.choose(&mut thread_rng()) {
-                        units.entry(unit.utype)
-                            .or_insert_with(Vec::new)
-                            .push(Unit {
-                                id: unit.id.clone(),
-                                heading: 0,
-                                position: (0., 0.),
-                            });
-                    }
-                }
-            }
+        // insert lone units (outside of formation)
+        insert_units(unit_db, &mut units, &options.units);
+
+        let mut formations = Vec::new();
+        for formation_opt in &options.formations {
+            formations.push(insert_units(unit_db, &mut units, &formation_opt.units));
         }
 
         Self {
             options,
             name: name.to_owned(),
             units,
-            formations: vec![],
+            formations,
         }
     }
 
@@ -154,14 +134,45 @@ impl Taskforce {
             config.set(
                 "Mission",
                 &format!("{}_Formation{}", self.name, f_idx + 1),
-                Some(formation_str(&self.name, formation))
+                Some(formation_str(&self.name, formation)),
             );
         }
     }
 }
 
+fn insert_units(
+    unit_db: &UnitDb,
+    units: &mut HashMap<UnitType, Vec<Unit>>,
+    unit_opts: &Vec<UnitOption>,
+) -> Vec<UnitReference> {
+    unit_opts
+        .iter()
+        .filter_map(|unit_opt| match unit_opt {
+            UnitOption::Unit(id) => unit_db.by_id(&id).map(|unit| insert_unit(units, unit)),
+            UnitOption::Random { nation, utype } => {
+                let matches = unit_db.search(nation.as_deref(), *utype);
+                matches
+                    .choose(&mut thread_rng())
+                    .map(|unit| insert_unit(units, unit))
+            }
+        })
+        .collect()
+}
+
+fn insert_unit(units: &mut HashMap<UnitType, Vec<Unit>>, db_unit: &unit_db::Unit) -> UnitReference {
+    let unit_list = units.entry(db_unit.utype).or_insert_with(Vec::new);
+    let index = unit_list.len();
+    unit_list.push(Unit {
+        id: db_unit.id.clone(),
+        heading: 0,
+        position: (0., 0.),
+    });
+    (db_unit.utype, index)
+}
+
 fn formation_str(taskforce: &str, formation: &Vec<UnitReference>) -> String {
-    let sections = formation.iter()
+    let sections = formation
+        .iter()
         .map(|(utype, idx)| {
             let utype = utype.capitalised_singular();
             format!("{taskforce}{utype}{}", idx + 1)
@@ -173,7 +184,7 @@ fn formation_str(taskforce: &str, formation: &Vec<UnitReference>) -> String {
     format!("{formation}|Unnamed Group|Circle|1.5|OverrideSpawnPositions")
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct MissionOptions {
     /// the map center latitude and logitude
     pub latlon: (f32, f32),
@@ -198,7 +209,12 @@ impl Mission {
         let neutral = Taskforce::new(unit_db, "Neutral", options.neutral.clone());
         let blue = Taskforce::new(unit_db, "Taskforce1", options.blue.clone());
         let red = Taskforce::new(unit_db, "Taskforce2", options.red.clone());
-        Self { options, neutral, blue, red }
+        Self {
+            options,
+            neutral,
+            blue,
+            red,
+        }
     }
 
     pub fn write_ini(&self, config: &mut Ini) {
@@ -212,12 +228,12 @@ impl Mission {
         config.set(
             "Environment",
             "MapCenterLatitude",
-            Some(self.options.latlon.0.to_string())
+            Some(self.options.latlon.0.to_string()),
         );
         config.set(
             "Environment",
             "MapCenterLongitude",
-            Some(self.options.latlon.1.to_string())
+            Some(self.options.latlon.1.to_string()),
         );
     }
 }
