@@ -118,32 +118,6 @@ impl Taskforce {
     }
 }
 
-// impl std::fmt::Display for Taskforce {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         write!(f, "[{}]\n", self.name)?;
-
-//         let mut units = self.units.clone();
-//         for (utype, units) in self.formations.iter() {
-//             write!(f, "Formation {}\n", i + 1)?;
-//             for idx in units {
-//                 let unit = units.remove(id).unwrap();
-//                 write!(f, "\t{} ==> {}\n", id, unit.id)?;
-//             }
-//         }
-
-//         let mut sorted_keys = units.keys().collect::<Vec<_>>();
-//         sorted_keys.sort();
-//         // whatever is left is a singular unit
-//         for id in sorted_keys {
-//             // unwrap never fails
-//             let unit = units.get(id).unwrap();
-//             write!(f, "{} ==> {}\n", id, unit.id)?;
-//         }
-
-//         Ok(())
-//     }
-// }
-
 fn formation_str(taskforce: &str, formation: &Vec<UnitReference>) -> String {
     let sections = formation.iter()
         .map(|(utype, idx)| {
