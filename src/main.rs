@@ -1,6 +1,7 @@
 mod dir;
 mod gen;
 mod taskforce;
+mod mission;
 mod unit_db;
 
 use configparser::ini::{Ini, WriteOptions};
