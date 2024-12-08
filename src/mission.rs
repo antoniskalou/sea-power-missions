@@ -13,15 +13,15 @@ pub enum WeaponState {
     Hold,
 }
 
-impl ToString for WeaponState {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for WeaponState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use WeaponState::*;
         let str = match self {
             Free => "Free",
             Tight => "Tight",
             Hold => "Hold",
         };
-        str.to_owned()
+        write!(f, "{str}")
     }
 }
 
