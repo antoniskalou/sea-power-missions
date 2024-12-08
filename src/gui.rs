@@ -45,7 +45,7 @@ impl UnitOption {
                     (Some(nation), Some(utype)) => format!("<RANDOM {nation} {utype}>"),
                     (Some(nation), None) => format!("<RANDOM {nation}>"),
                     (None, Some(utype)) => format!("<RANDOM {utype}>"),
-                    (None, None) => "<RANDOM>".to_owned(),
+                    (None, None) => "<RANDOM>".into(),
                 }
             },
         }
@@ -55,7 +55,7 @@ impl UnitOption {
         match self {
             UnitOption::Unit(unit) => unit.nation.clone(),
             UnitOption::Random { nation, .. } =>
-                nation.clone().unwrap_or("<RANDOM>".to_owned()),
+                nation.clone().unwrap_or("<RANDOM>".into()),
         }
     }
 
@@ -63,7 +63,7 @@ impl UnitOption {
         match self {
             UnitOption::Unit(unit) => unit.utype.to_string(),
             UnitOption::Random { utype, .. } =>
-                utype.clone().unwrap_or("<RANDOM>".to_owned()),
+                utype.clone().unwrap_or("<RANDOM>".into()),
         }
     }
 }
@@ -79,120 +79,120 @@ fn units() -> Vec<UnitOption> {
             utype: None,
         },
         UnitOption::Random {
-            nation: Some("USSR".to_owned()),
+            nation: Some("USSR".into()),
             utype: None,
         },
         UnitOption::Random {
-            nation: Some("USSR".to_owned()),
-            utype: Some("Ship".to_owned()),
+            nation: Some("USSR".into()),
+            utype: Some("Ship".into()),
         },
         UnitOption::Random {
-            nation: Some("USSR".to_owned()),
-            utype: Some("Submarine".to_owned()),
+            nation: Some("USSR".into()),
+            utype: Some("Submarine".into()),
         },
         UnitOption::Random {
-            nation: Some("USA".to_owned()),
+            nation: Some("USA".into()),
             utype: None,
         },
         UnitOption::Random {
-            nation: Some("USA".to_owned()),
-            utype: Some("Ship".to_owned()),
+            nation: Some("USA".into()),
+            utype: Some("Ship".into()),
         },
         UnitOption::Random {
-            nation: Some("USA".to_owned()),
-            utype: Some("Submarine".to_owned()),
+            nation: Some("USA".into()),
+            utype: Some("Submarine".into()),
         },
         UnitOption::Random {
-            nation: Some("China".to_owned()),
+            nation: Some("China".into()),
             utype: None,
         },
         UnitOption::Random {
-            nation: Some("China".to_owned()),
-            utype: Some("Ship".to_owned()),
+            nation: Some("China".into()),
+            utype: Some("Ship".into()),
         },
         UnitOption::Random {
-            nation: Some("China".to_owned()),
-            utype: Some("Submarine".to_owned()),
+            nation: Some("China".into()),
+            utype: Some("Submarine".into()),
         },
         // Civilian
         UnitOption::Unit(Unit {
-            id: "civ_ms_act_1".to_owned(),
-            name: "ACT 1-class".to_owned(),
-            nation: "Civilian".to_owned(),
+            id: "civ_ms_act_1".into(),
+            name: "ACT 1-class".into(),
+            nation: "Civilian".into(),
             utype: Ship,
         }),
         UnitOption::Unit(Unit {
-            id: "civ_fv_sampan".to_owned(),
-            name: "Sampan".to_owned(),
-            nation: "Civilian".to_owned(),
+            id: "civ_fv_sampan".into(),
+            name: "Sampan".into(),
+            nation: "Civilian".into(),
             utype: Ship,
         }),
         UnitOption::Unit(Unit {
-            id: "civ_fv_okean".to_owned(),
-            name: "Okean-class Trawler".to_owned(),
-            nation: "Civilian".to_owned(),
+            id: "civ_fv_okean".into(),
+            name: "Okean-class Trawler".into(),
+            nation: "Civilian".into(),
             utype: Ship,
         }),
         UnitOption::Unit(Unit {
-            id: "civ_ms_kommunist".to_owned(),
-            name: "Kommunist-class".to_owned(),
-            nation: "Civilian".to_owned(),
+            id: "civ_ms_kommunist".into(),
+            name: "Kommunist-class".into(),
+            nation: "Civilian".into(),
             utype: Ship,
         }),
         // USSR
         UnitOption::Unit(Unit {
-            id: "wp_bpk_kresta2".to_owned(),
-            name: "Kresta II-class".to_owned(),
-            nation: "USSR".to_owned(),
+            id: "wp_bpk_kresta2".into(),
+            name: "Kresta II-class".into(),
+            nation: "USSR".into(),
             utype: Ship,
         }),
         UnitOption::Unit(Unit {
-            id: "wp_bpk_udaloy".to_owned(),
-            name: "Udaloy-class".to_owned(),
-            nation: "USSR".to_owned(),
+            id: "wp_bpk_udaloy".into(),
+            name: "Udaloy-class".into(),
+            nation: "USSR".into(),
             utype: Ship,
         }),
         UnitOption::Unit(Unit {
-            id: "wp_pkr_moskva".to_owned(),
-            name: "Moskva-class".to_owned(),
-            nation: "USSR".to_owned(),
+            id: "wp_pkr_moskva".into(),
+            name: "Moskva-class".into(),
+            nation: "USSR".into(),
             utype: Ship,
         }),
         UnitOption::Unit(Unit {
-            id: "wp_rkr_kirov".to_owned(),
-            name: "Kirov-class".to_owned(),
-            nation: "USSR".to_owned(),
+            id: "wp_rkr_kirov".into(),
+            name: "Kirov-class".into(),
+            nation: "USSR".into(),
             utype: Ship,
         }),
         UnitOption::Unit(Unit {
-            id: "wp_ss_kilo".to_owned(),
-            name: "Kilo-class".to_owned(),
-            nation: "USSR".to_owned(),
+            id: "wp_ss_kilo".into(),
+            name: "Kilo-class".into(),
+            nation: "USSR".into(),
             utype: Submarine,
         }),
         // USA
         UnitOption::Unit(Unit {
-            id: "usn_ff_knox".to_owned(),
-            name: "Knox-class".to_owned(),
-            nation: "USA".to_owned(),
+            id: "usn_ff_knox".into(),
+            name: "Knox-class".into(),
+            nation: "USA".into(),
             utype: Ship,
         }),
         UnitOption::Unit(Unit {
-            id: "usn_ff_garcia".to_owned(),
-            name: "Garcia-class".to_owned(),
-            nation: "USA".to_owned(),
+            id: "usn_ff_garcia".into(),
+            name: "Garcia-class".into(),
+            nation: "USA".into(),
             utype: Ship,
         }),
         UnitOption::Unit(Unit {
-            id: "usn_cv_kitty_hawk".to_owned(),
-            name: "Kitty Hawk-class".to_owned(),
-            nation: "USA".to_owned(),
+            id: "usn_cv_kitty_hawk".into(),
+            name: "Kitty Hawk-class".into(),
+            nation: "USA".into(),
             utype: Ship,
         }),
         UnitOption::Unit(Unit {
-            id: "usn_cg_leahy".to_owned(),
-            name: "Leahy-class".to_owned(),
-            nation: "USA".to_owned(),
+            id: "usn_cg_leahy".into(),
+            name: "Leahy-class".into(),
+            nation: "USA".into(),
             utype: Ship,
         }),
     ]
