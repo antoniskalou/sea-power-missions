@@ -168,7 +168,7 @@ fn insert_units(
     unit_db: &UnitDb,
     general: &GeneralOptions,
     units: &mut HashMap<UnitType, Vec<Unit>>,
-    unit_opts: &Vec<UnitOption>,
+    unit_opts: &[UnitOption],
 ) -> Vec<UnitReference> {
     unit_opts
         .iter()
@@ -198,7 +198,7 @@ fn insert_unit(
     (db_unit.utype, index)
 }
 
-fn formation_str(taskforce: &str, formation: &Vec<UnitReference>) -> String {
+fn formation_str(taskforce: &str, formation: &[UnitReference]) -> String {
     let sections = formation
         .iter()
         .map(|(utype, idx)| {
