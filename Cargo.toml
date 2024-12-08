@@ -7,4 +7,9 @@ edition = "2021"
 
 [dependencies]
 rand = "0.8"
+# INI
 configparser = "3.1"
+# TUI
+cursive = "0.21"
+cursive_table_view = "0.15"
+cursive_tree_view = "0.9"

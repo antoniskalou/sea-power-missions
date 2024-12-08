@@ -1,4 +1,5 @@
 mod dir;
+mod gui;
 mod mission;
 mod rand_ext;
 mod unit_db;
@@ -23,6 +24,8 @@ fn load_template() -> Result<Ini, String> {
 fn main() -> Result<(), Box<dyn Error>> {
     let unit_db = UnitDb::new().expect("failed to initialise UnitBD");
     // println!("{:?}", unit_db);
+
+    gui::start();
 
     let mission = Mission::new(
         &unit_db,
