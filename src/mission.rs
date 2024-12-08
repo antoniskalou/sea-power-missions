@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
+use crate::rand_ext;
 use configparser::ini::Ini;
-use rand::{seq::SliceRandom, thread_rng, Rng};
+use rand::{seq::SliceRandom, thread_rng};
 
 use crate::unit_db::{self, UnitDb, UnitId, UnitType};
 
@@ -41,21 +42,34 @@ pub struct Unit {
 }
 
 impl Unit {
+    pub fn new(general: &GeneralOptions, id: &str) -> Self {
+        Self {
+            id: id.to_owned(),
+            heading: rand_ext::heading(),
+            position: rand_ext::position(&general.size),
+        }
+    }
+
     pub fn write_ini(&self, config: &mut Ini, section: &str) {
         config.set(&section, "type", Some(self.id.clone()));
         // speed setting
         config.set(&section, "Telegraph", Some(2.to_string()));
         // defaults to "Green"
-        config.set(&section, "CrewSkill", Some("Trained".to_owned()));
+        config.set(&section, "CrewSkill", Some("Trained".into()));
         // defaults to "Depleted"
-        config.set(&section, "Stores", Some("Full".to_owned()));
+        config.set(&section, "Stores", Some("Full".into()));
 
+        // generate our own positions and headings, don't use RandomSpawn*
+        // because by having static positions the player can replay the mission
+        // or share it if they like it without changing the experience each
+        // time the generator is run.
+        //
+        // It also means that the generated config can be used by the mission editor
+        // without overwriting the Random* options (which currently happens in v0.1.0.6).
         config.set(&section, "Heading", Some(self.heading.to_string()));
-
         {
             let (x, y) = self.position;
-            let position_str = format!("{x},0,{y}");
-            config.set(&section, "RelativePositionInNM", Some(position_str));
+            config.set(&section, "RelativePositionInNM", Some(format!("{x},0,{y}")));
         }
     }
 }
@@ -83,14 +97,24 @@ pub struct Taskforce {
 }
 
 impl Taskforce {
-    pub fn new(unit_db: &UnitDb, name: &str, options: TaskforceOptions) -> Self {
+    pub fn new(
+        unit_db: &UnitDb,
+        general: &GeneralOptions,
+        name: &str,
+        options: TaskforceOptions,
+    ) -> Self {
         let mut units = HashMap::new();
         // insert lone units (outside of formation)
-        insert_units(unit_db, &mut units, &options.units);
+        insert_units(unit_db, &general, &mut units, &options.units);
 
         let mut formations = Vec::new();
         for formation_opt in &options.formations {
-            formations.push(insert_units(unit_db, &mut units, &formation_opt.units));
+            formations.push(insert_units(
+                unit_db,
+                &general,
+                &mut units,
+                &formation_opt.units,
+            ));
         }
 
         Self {
@@ -142,31 +166,34 @@ impl Taskforce {
 
 fn insert_units(
     unit_db: &UnitDb,
+    general: &GeneralOptions,
     units: &mut HashMap<UnitType, Vec<Unit>>,
     unit_opts: &Vec<UnitOption>,
 ) -> Vec<UnitReference> {
     unit_opts
         .iter()
         .filter_map(|unit_opt| match unit_opt {
-            UnitOption::Unit(id) => unit_db.by_id(&id).map(|unit| insert_unit(units, unit)),
+            UnitOption::Unit(id) => unit_db
+                .by_id(&id)
+                .map(|unit| insert_unit(general, units, unit)),
             UnitOption::Random { nation, utype } => {
                 let matches = unit_db.search(nation.as_deref(), *utype);
                 matches
                     .choose(&mut thread_rng())
-                    .map(|unit| insert_unit(units, unit))
+                    .map(|unit| insert_unit(general, units, unit))
             }
         })
         .collect()
 }
 
-fn insert_unit(units: &mut HashMap<UnitType, Vec<Unit>>, db_unit: &unit_db::Unit) -> UnitReference {
+fn insert_unit(
+    general: &GeneralOptions,
+    units: &mut HashMap<UnitType, Vec<Unit>>,
+    db_unit: &unit_db::Unit,
+) -> UnitReference {
     let unit_list = units.entry(db_unit.utype).or_insert_with(Vec::new);
     let index = unit_list.len();
-    unit_list.push(Unit {
-        id: db_unit.id.clone(),
-        heading: 0,
-        position: (0., 0.),
-    });
+    unit_list.push(Unit::new(general, &db_unit.id));
     (db_unit.utype, index)
 }
 
@@ -184,12 +211,18 @@ fn formation_str(taskforce: &str, formation: &Vec<UnitReference>) -> String {
     format!("{formation}|Unnamed Group|Circle|1.5|OverrideSpawnPositions")
 }
 
+/// Mission wide options
 #[derive(Clone, Debug)]
-pub struct MissionOptions {
+pub struct GeneralOptions {
     /// the map center latitude and logitude
     pub latlon: (f32, f32),
     /// the size of the box (w,h) that the mission will take place in.
     pub size: (u16, u16),
+}
+
+#[derive(Clone, Debug)]
+pub struct MissionOptions {
+    pub general: GeneralOptions,
     pub neutral: TaskforceOptions,
     pub blue: TaskforceOptions,
     pub red: TaskforceOptions,
@@ -206,9 +239,19 @@ pub struct Mission {
 
 impl Mission {
     pub fn new(unit_db: &UnitDb, options: MissionOptions) -> Self {
-        let neutral = Taskforce::new(unit_db, "Neutral", options.neutral.clone());
-        let blue = Taskforce::new(unit_db, "Taskforce1", options.blue.clone());
-        let red = Taskforce::new(unit_db, "Taskforce2", options.red.clone());
+        let neutral = Taskforce::new(
+            unit_db,
+            &options.general,
+            "Neutral",
+            options.neutral.clone(),
+        );
+        let blue = Taskforce::new(
+            unit_db,
+            &options.general,
+            "Taskforce1",
+            options.blue.clone(),
+        );
+        let red = Taskforce::new(unit_db, &options.general, "Taskforce2", options.red.clone());
         Self {
             options,
             neutral,
@@ -225,15 +268,8 @@ impl Mission {
     }
 
     fn write_environment(&self, config: &mut Ini) {
-        config.set(
-            "Environment",
-            "MapCenterLatitude",
-            Some(self.options.latlon.0.to_string()),
-        );
-        config.set(
-            "Environment",
-            "MapCenterLongitude",
-            Some(self.options.latlon.1.to_string()),
-        );
+        let (lat, lon) = self.options.general.latlon;
+        config.set("Environment", "MapCenterLatitude", Some(lat.to_string()));
+        config.set("Environment", "MapCenterLongitude", Some(lon.to_string()));
     }
 }

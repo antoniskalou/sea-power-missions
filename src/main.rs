@@ -1,6 +1,5 @@
 mod dir;
-// mod gen;
-// mod taskforce;
+mod rand_ext;
 mod mission;
 mod unit_db;
 
@@ -8,17 +7,17 @@ use configparser::ini::{Ini, WriteOptions};
 use std::error::Error;
 use std::path::Path;
 use std::str;
-// use taskforce::{Taskforce, TaskforceOptions};
 use mission::{
-    FormationOption, Mission, MissionOptions, TaskforceOptions, UnitOption, WeaponState,
+    FormationOption, GeneralOptions, Mission, MissionOptions, TaskforceOptions, UnitOption,
+    WeaponState,
 };
-use unit_db::{Unit, UnitDb, UnitId, UnitType};
+use unit_db::UnitDb;
 
 const MISSION_TEMPLATE: &'static str = include_str!("../resources/mission_template.ini");
 
 fn load_template() -> Result<Ini, String> {
     let mut config = Ini::new_cs();
-    config.read(MISSION_TEMPLATE.to_owned())?;
+    config.read(MISSION_TEMPLATE.into())?;
     Ok(config)
 }
 
@@ -35,24 +34,26 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mission = Mission::new(
         &unit_db,
         MissionOptions {
-            latlon: (12., 12.),
-            size: (100, 100),
+            general: GeneralOptions {
+                latlon: (34.31, 29.62),
+                size: (100, 100),
+            },
             neutral: TaskforceOptions {
                 weapon_state: WeaponState::Hold,
-                units: vec![UnitOption::Unit("civ_ms_kommunist".to_owned())],
+                units: vec![UnitOption::Unit("civ_ms_kommunist".into())],
                 formations: vec![],
             },
             blue: TaskforceOptions {
                 weapon_state: WeaponState::Tight,
-                units: vec![UnitOption::Unit("wp_rkr_kirov".to_owned())],
+                units: vec![UnitOption::Unit("wp_rkr_kirov".into())],
                 formations: vec![FormationOption {
-                    units: vec![UnitOption::Unit("wp_rkr_kirov".to_owned())],
+                    units: vec![UnitOption::Unit("wp_rkr_kirov".into())],
                 }],
             },
             red: TaskforceOptions {
                 weapon_state: WeaponState::Free,
                 units: vec![UnitOption::Random {
-                    nation: Some("usn".to_owned()),
+                    nation: Some("usn".into()),
                     utype: None,
                 }],
                 formations: vec![],
@@ -65,9 +66,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     mission.write_ini(&mut config);
     println!("========== TEMPLATE ==========\n{}", config.writes());
 
-    // let mission_path = dir::mission_dir().join("Random Mission.ini");
+    let mission_path = dir::mission_dir().join("Random Mission.ini");
     // let mission_path = Path::new("./mission.ini");
-    // save_config(&mission_path, config)?;
+    save_config(&mission_path, config)?;
 
     Ok(())
 }
