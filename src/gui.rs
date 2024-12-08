@@ -1,5 +1,7 @@
+use crate::unit_db as db;
+
 use cursive::align::HAlign;
-use cursive::reexports::log::{log, Level, LevelFilter};
+use cursive::reexports::log::{log, LevelFilter};
 use cursive::Cursive;
 use cursive::views::{Button, Dialog, DummyView, EditView, LinearLayout, ListView, Panel, ResizedView, SelectView, TextView};
 use cursive::traits::*;
@@ -21,7 +23,7 @@ struct Unit {
     name: String,
     nation: String,
     // TODO: have a type of unit (e.g. Carrier Unit)
-    utype: String,
+    utype: db::UnitType,
 }
 
 #[derive(Clone, Debug)]
@@ -59,7 +61,7 @@ impl UnitOption {
 
     fn utype(&self) -> String {
         match self {
-            UnitOption::Unit(unit) => unit.utype.clone(),
+            UnitOption::Unit(unit) => unit.utype.to_string(),
             UnitOption::Random { utype, .. } =>
                 utype.clone().unwrap_or("<RANDOM>".to_owned()),
         }
@@ -70,6 +72,7 @@ impl UnitOption {
 // struct MaybeUnit(UnitOption);
 
 fn units() -> Vec<UnitOption> {
+    use db::UnitType::*;
     vec![
         UnitOption::Random {
             nation: None,
@@ -116,81 +119,81 @@ fn units() -> Vec<UnitOption> {
             id: "civ_ms_act_1".to_owned(),
             name: "ACT 1-class".to_owned(),
             nation: "Civilian".to_owned(),
-            utype: "Ship".to_owned(),
+            utype: Ship,
         }),
         UnitOption::Unit(Unit {
             id: "civ_fv_sampan".to_owned(),
             name: "Sampan".to_owned(),
             nation: "Civilian".to_owned(),
-            utype: "Ship".to_owned(),
+            utype: Ship,
         }),
         UnitOption::Unit(Unit {
             id: "civ_fv_okean".to_owned(),
             name: "Okean-class Trawler".to_owned(),
             nation: "Civilian".to_owned(),
-            utype: "Ship".to_owned(),
+            utype: Ship,
         }),
         UnitOption::Unit(Unit {
             id: "civ_ms_kommunist".to_owned(),
             name: "Kommunist-class".to_owned(),
             nation: "Civilian".to_owned(),
-            utype: "Ship".to_owned(),
+            utype: Ship,
         }),
         // USSR
         UnitOption::Unit(Unit {
             id: "wp_bpk_kresta2".to_owned(),
             name: "Kresta II-class".to_owned(),
             nation: "USSR".to_owned(),
-            utype: "Ship".to_owned(),
+            utype: Ship,
         }),
         UnitOption::Unit(Unit {
             id: "wp_bpk_udaloy".to_owned(),
             name: "Udaloy-class".to_owned(),
             nation: "USSR".to_owned(),
-            utype: "Ship".to_owned(),
+            utype: Ship,
         }),
         UnitOption::Unit(Unit {
             id: "wp_pkr_moskva".to_owned(),
             name: "Moskva-class".to_owned(),
             nation: "USSR".to_owned(),
-            utype: "Ship".to_owned(),
+            utype: Ship,
         }),
         UnitOption::Unit(Unit {
             id: "wp_rkr_kirov".to_owned(),
             name: "Kirov-class".to_owned(),
             nation: "USSR".to_owned(),
-            utype: "Ship".to_owned(),
+            utype: Ship,
         }),
         UnitOption::Unit(Unit {
             id: "wp_ss_kilo".to_owned(),
             name: "Kilo-class".to_owned(),
             nation: "USSR".to_owned(),
-            utype: "Submarine".to_owned(),
+            utype: Submarine,
         }),
         // USA
         UnitOption::Unit(Unit {
             id: "usn_ff_knox".to_owned(),
             name: "Knox-class".to_owned(),
             nation: "USA".to_owned(),
-            utype: "Ship".to_owned(),
+            utype: Ship,
         }),
         UnitOption::Unit(Unit {
             id: "usn_ff_garcia".to_owned(),
             name: "Garcia-class".to_owned(),
             nation: "USA".to_owned(),
-            utype: "Ship".to_owned(),
+            utype: Ship,
         }),
         UnitOption::Unit(Unit {
             id: "usn_cv_kitty_hawk".to_owned(),
             name: "Kitty Hawk-class".to_owned(),
             nation: "USA".to_owned(),
-            utype: "Ship".to_owned(),
+            utype: Ship,
         }),
         UnitOption::Unit(Unit {
             id: "usn_cg_leahy".to_owned(),
             name: "Leahy-class".to_owned(),
             nation: "USA".to_owned(),
-            utype: "Ship".to_owned(),
+            utype: Ship,
         }),
     ]
 }
@@ -491,7 +494,6 @@ fn customise_group(s: &mut Cursive, available: Vec<UnitOption>) {
 
     let create_formation_button =
            LinearLayout::horizontal()
-            // TODO: figure out spacing
             .child(Button::new("Create Formation", add_formation));
 
     let selected_panel = Panel::new(

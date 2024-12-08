@@ -48,6 +48,12 @@ impl From<String> for UnitType {
     }
 }
 
+impl std::fmt::Display for UnitType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.capitalised_singular())
+    }
+}
+
 pub type UnitId = String;
 
 #[derive(Clone, Debug)]
