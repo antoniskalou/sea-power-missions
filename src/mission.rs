@@ -53,7 +53,7 @@ impl Unit {
     pub fn write_ini(&self, config: &mut Ini, section: &str) {
         config.set(&section, "type", Some(self.id.clone()));
         // speed setting
-        config.set(&section, "Telegraph", Some(2.to_string()));
+        config.set(&section, "Telegraph", Some(3.to_string()));
         // defaults to "Green"
         config.set(&section, "CrewSkill", Some("Trained".into()));
         // defaults to "Depleted"
@@ -175,6 +175,7 @@ fn insert_units(
         .filter_map(|unit_opt| match unit_opt {
             UnitOption::Unit(id) => unit_db
                 .by_id(&id)
+                // TODO: fail if not found
                 .map(|unit| insert_unit(general, units, unit)),
             UnitOption::Random { nation, utype } => {
                 let matches = unit_db.search(nation.as_deref(), *utype);
@@ -208,7 +209,10 @@ fn formation_str(taskforce: &str, formation: &Vec<UnitReference>) -> String {
     let formation = sections.join(",");
     // OverrideSpawnPositions allows us to place our units anywhere and the formation
     // will be adjusted by the game on mission start (which is exactly what we want)
-    format!("{formation}|Unnamed Group|Circle|1.5|OverrideSpawnPositions")
+    //
+    // use 7.5nm spacing for now, this may not be optimal in tight spaces, but this mod is currently
+    // unable to handle those kind of scenarios anyway.
+    format!("{formation}|Unnamed Group|Circle|7.5|OverrideSpawnPositions")
 }
 
 /// Mission wide options

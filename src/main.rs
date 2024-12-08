@@ -1,16 +1,15 @@
 mod dir;
-mod rand_ext;
 mod mission;
+mod rand_ext;
 mod unit_db;
 
-use configparser::ini::{Ini, WriteOptions};
-use std::error::Error;
-use std::path::Path;
-use std::str;
+use configparser::ini::Ini;
 use mission::{
     FormationOption, GeneralOptions, Mission, MissionOptions, TaskforceOptions, UnitOption,
     WeaponState,
 };
+use std::error::Error;
+use std::str;
 use unit_db::UnitDb;
 
 const MISSION_TEMPLATE: &'static str = include_str!("../resources/mission_template.ini");
@@ -19,12 +18,6 @@ fn load_template() -> Result<Ini, String> {
     let mut config = Ini::new_cs();
     config.read(MISSION_TEMPLATE.into())?;
     Ok(config)
-}
-
-fn save_config(path: &Path, config: Ini) -> std::io::Result<()> {
-    let mut options = WriteOptions::default();
-    options.blank_lines_between_sections = 1;
-    config.pretty_write(path, &options)
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -40,23 +33,57 @@ fn main() -> Result<(), Box<dyn Error>> {
             },
             neutral: TaskforceOptions {
                 weapon_state: WeaponState::Hold,
-                units: vec![UnitOption::Unit("civ_ms_kommunist".into())],
+                units: vec![
+                    UnitOption::Unit("civ_ms_kommunist".into()),
+                    UnitOption::Random {
+                        nation: Some("civ".into()),
+                        utype: None,
+                    },
+                    UnitOption::Random {
+                        nation: Some("civ".into()),
+                        utype: None,
+                    },
+                ],
                 formations: vec![],
             },
             blue: TaskforceOptions {
                 weapon_state: WeaponState::Tight,
-                units: vec![UnitOption::Unit("wp_rkr_kirov".into())],
+                units: vec![UnitOption::Random {
+                    nation: Some("wp".into()),
+                    utype: Some(unit_db::UnitType::Submarine),
+                }],
                 formations: vec![FormationOption {
-                    units: vec![UnitOption::Unit("wp_rkr_kirov".into())],
+                    units: vec![
+                        // UnitOption::Unit("wp_cv_orel".into()),
+                        UnitOption::Unit("wp_rkr_kirov".into()),
+                        // UnitOption::Unit("wp_bpk_udaloy".into()),
+                        // UnitOption::Unit("wp_em_sovremenny".into()),
+                        UnitOption::Unit("wp_bpk_kresta2".into()),
+                        UnitOption::Unit("wp_bpk_kashin".into()),
+                        // UnitOption::Unit("wp_bpk_kashin".into()),
+                    ],
                 }],
             },
             red: TaskforceOptions {
                 weapon_state: WeaponState::Free,
                 units: vec![UnitOption::Random {
                     nation: Some("usn".into()),
-                    utype: None,
+                    utype: Some(unit_db::UnitType::Submarine),
                 }],
-                formations: vec![],
+                formations: vec![FormationOption {
+                    units: vec![
+                        // UnitOption::Unit("usn_cg_ticonderoga".into()),
+                        UnitOption::Unit("usn_cgn_virginia".into()),
+                        UnitOption::Unit("usn_dd_spruance".into()),
+                        // UnitOption::Unit("usn_dd_adams_late".into()),
+                        UnitOption::Unit("usn_ff_knox".into()),
+                        UnitOption::Unit("usn_ff_garcia".into()),
+                        UnitOption::Random {
+                            nation: Some("knm".into()),
+                            utype: Some(unit_db::UnitType::Ship),
+                        },
+                    ],
+                }],
             },
         },
     );
@@ -67,8 +94,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("========== TEMPLATE ==========\n{}", config.writes());
 
     let mission_path = dir::mission_dir().join("Random Mission.ini");
-    // let mission_path = Path::new("./mission.ini");
-    save_config(&mission_path, config)?;
+    config.write(mission_path)?;
 
     Ok(())
 }
