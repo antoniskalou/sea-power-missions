@@ -16,11 +16,6 @@ pub enum UnitType {
 }
 
 impl UnitType {
-    pub fn all() -> [UnitType; 4] {
-        use UnitType::*;
-        [Ship, Submarine, Helicopter, FixedWing]
-    }
-
     pub fn capitalised_singular(&self) -> String {
         let str = match self {
             Self::Ship => "Vessel",

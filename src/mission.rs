@@ -51,7 +51,7 @@ impl Unit {
     }
 
     pub fn write_ini(&self, config: &mut Ini, section: &str) {
-        config.set(&section, "type", Some(self.id.clone()));
+        config.set(&section, "Type", Some(self.id.clone()));
         // speed setting
         config.set(&section, "Telegraph", Some(3.to_string()));
         // defaults to "Green"
