@@ -31,7 +31,7 @@ enum UnitOption {
     Unit(Unit),
     Random {
         nation: Option<String>,
-        utype: Option<String>,
+        utype: Option<db::UnitType>,
     }
 }
 
@@ -63,7 +63,7 @@ impl UnitOption {
         match self {
             UnitOption::Unit(unit) => unit.utype.to_string(),
             UnitOption::Random { utype, .. } =>
-                utype.clone().unwrap_or("<RANDOM>".into()),
+                utype.map_or("RANDOM".into(), |utype| utype.to_string()),
         }
     }
 }
@@ -84,11 +84,11 @@ fn units() -> Vec<UnitOption> {
         },
         UnitOption::Random {
             nation: Some("USSR".into()),
-            utype: Some("Ship".into()),
+            utype: Some(Ship)
         },
         UnitOption::Random {
             nation: Some("USSR".into()),
-            utype: Some("Submarine".into()),
+            utype: Some(Submarine),
         },
         UnitOption::Random {
             nation: Some("USA".into()),
@@ -96,11 +96,11 @@ fn units() -> Vec<UnitOption> {
         },
         UnitOption::Random {
             nation: Some("USA".into()),
-            utype: Some("Ship".into()),
+            utype: Some(Ship),
         },
         UnitOption::Random {
             nation: Some("USA".into()),
-            utype: Some("Submarine".into()),
+            utype: Some(Submarine),
         },
         UnitOption::Random {
             nation: Some("China".into()),
@@ -108,11 +108,11 @@ fn units() -> Vec<UnitOption> {
         },
         UnitOption::Random {
             nation: Some("China".into()),
-            utype: Some("Ship".into()),
+            utype: Some(Ship),
         },
         UnitOption::Random {
             nation: Some("China".into()),
-            utype: Some("Submarine".into()),
+            utype: Some(Submarine),
         },
         // Civilian
         UnitOption::Unit(Unit {

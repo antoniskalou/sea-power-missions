@@ -25,7 +25,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let unit_db = UnitDb::new().expect("failed to initialise UnitBD");
     // println!("{:?}", unit_db);
 
-    // gui::start();
+    gui::start();
 
     let mission = Mission::new(
         &unit_db,
