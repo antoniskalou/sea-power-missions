@@ -27,7 +27,7 @@ struct Unit {
 }
 
 #[derive(Clone, Debug)]
-enum UnitOption {
+enum UnitOrRandom {
     Unit(Unit),
     Random {
         nation: Option<String>,
@@ -35,11 +35,11 @@ enum UnitOption {
     }
 }
 
-impl UnitOption {
+impl UnitOrRandom {
     fn name(&self) -> String {
         match self {
-            UnitOption::Unit(unit) => unit.name.clone(),
-            UnitOption::Random { nation, utype } => {
+            UnitOrRandom::Unit(unit) => unit.name.clone(),
+            UnitOrRandom::Random { nation, utype } => {
                 // TODO: cleanup, will want to add more filters later
                 match (nation, utype) {
                     (Some(nation), Some(utype)) => format!("<RANDOM {nation} {utype}>"),
@@ -53,143 +53,143 @@ impl UnitOption {
 
     fn nation(&self) -> String {
         match self {
-            UnitOption::Unit(unit) => unit.nation.clone(),
-            UnitOption::Random { nation, .. } =>
+            UnitOrRandom::Unit(unit) => unit.nation.clone(),
+            UnitOrRandom::Random { nation, .. } =>
                 nation.clone().unwrap_or("<RANDOM>".into()),
         }
     }
 
     fn utype(&self) -> String {
         match self {
-            UnitOption::Unit(unit) => unit.utype.to_string(),
-            UnitOption::Random { utype, .. } =>
+            UnitOrRandom::Unit(unit) => unit.utype.to_string(),
+            UnitOrRandom::Random { utype, .. } =>
                 utype.map_or("RANDOM".into(), |utype| utype.to_string()),
         }
     }
 }
 
 // #[derive(Clone, Debug)]
-// struct MaybeUnit(UnitOption);
+// struct MaybeUnit(UnitOrRandom);
 
-fn units() -> Vec<UnitOption> {
+fn units() -> Vec<UnitOrRandom> {
     use db::UnitType::*;
     vec![
-        UnitOption::Random {
+        UnitOrRandom::Random {
             nation: None,
             utype: None,
         },
-        UnitOption::Random {
+        UnitOrRandom::Random {
             nation: Some("USSR".into()),
             utype: None,
         },
-        UnitOption::Random {
+        UnitOrRandom::Random {
             nation: Some("USSR".into()),
             utype: Some(Ship)
         },
-        UnitOption::Random {
+        UnitOrRandom::Random {
             nation: Some("USSR".into()),
             utype: Some(Submarine),
         },
-        UnitOption::Random {
+        UnitOrRandom::Random {
             nation: Some("USA".into()),
             utype: None,
         },
-        UnitOption::Random {
+        UnitOrRandom::Random {
             nation: Some("USA".into()),
             utype: Some(Ship),
         },
-        UnitOption::Random {
+        UnitOrRandom::Random {
             nation: Some("USA".into()),
             utype: Some(Submarine),
         },
-        UnitOption::Random {
+        UnitOrRandom::Random {
             nation: Some("China".into()),
             utype: None,
         },
-        UnitOption::Random {
+        UnitOrRandom::Random {
             nation: Some("China".into()),
             utype: Some(Ship),
         },
-        UnitOption::Random {
+        UnitOrRandom::Random {
             nation: Some("China".into()),
             utype: Some(Submarine),
         },
         // Civilian
-        UnitOption::Unit(Unit {
+        UnitOrRandom::Unit(Unit {
             id: "civ_ms_act_1".into(),
             name: "ACT 1-class".into(),
             nation: "Civilian".into(),
             utype: Ship,
         }),
-        UnitOption::Unit(Unit {
+        UnitOrRandom::Unit(Unit {
             id: "civ_fv_sampan".into(),
             name: "Sampan".into(),
             nation: "Civilian".into(),
             utype: Ship,
         }),
-        UnitOption::Unit(Unit {
+        UnitOrRandom::Unit(Unit {
             id: "civ_fv_okean".into(),
             name: "Okean-class Trawler".into(),
             nation: "Civilian".into(),
             utype: Ship,
         }),
-        UnitOption::Unit(Unit {
+        UnitOrRandom::Unit(Unit {
             id: "civ_ms_kommunist".into(),
             name: "Kommunist-class".into(),
             nation: "Civilian".into(),
             utype: Ship,
         }),
         // USSR
-        UnitOption::Unit(Unit {
+        UnitOrRandom::Unit(Unit {
             id: "wp_bpk_kresta2".into(),
             name: "Kresta II-class".into(),
             nation: "USSR".into(),
             utype: Ship,
         }),
-        UnitOption::Unit(Unit {
+        UnitOrRandom::Unit(Unit {
             id: "wp_bpk_udaloy".into(),
             name: "Udaloy-class".into(),
             nation: "USSR".into(),
             utype: Ship,
         }),
-        UnitOption::Unit(Unit {
+        UnitOrRandom::Unit(Unit {
             id: "wp_pkr_moskva".into(),
             name: "Moskva-class".into(),
             nation: "USSR".into(),
             utype: Ship,
         }),
-        UnitOption::Unit(Unit {
+        UnitOrRandom::Unit(Unit {
             id: "wp_rkr_kirov".into(),
             name: "Kirov-class".into(),
             nation: "USSR".into(),
             utype: Ship,
         }),
-        UnitOption::Unit(Unit {
+        UnitOrRandom::Unit(Unit {
             id: "wp_ss_kilo".into(),
             name: "Kilo-class".into(),
             nation: "USSR".into(),
             utype: Submarine,
         }),
         // USA
-        UnitOption::Unit(Unit {
+        UnitOrRandom::Unit(Unit {
             id: "usn_ff_knox".into(),
             name: "Knox-class".into(),
             nation: "USA".into(),
             utype: Ship,
         }),
-        UnitOption::Unit(Unit {
+        UnitOrRandom::Unit(Unit {
             id: "usn_ff_garcia".into(),
             name: "Garcia-class".into(),
             nation: "USA".into(),
             utype: Ship,
         }),
-        UnitOption::Unit(Unit {
+        UnitOrRandom::Unit(Unit {
             id: "usn_cv_kitty_hawk".into(),
             name: "Kitty Hawk-class".into(),
             nation: "USA".into(),
             utype: Ship,
         }),
-        UnitOption::Unit(Unit {
+        UnitOrRandom::Unit(Unit {
             id: "usn_cg_leahy".into(),
             name: "Leahy-class".into(),
             nation: "USA".into(),
@@ -205,7 +205,7 @@ enum UnitColumn {
     Type,
 }
 
-impl TableViewItem<UnitColumn> for UnitOption {
+impl TableViewItem<UnitColumn> for UnitOrRandom {
     fn to_column(&self, column: UnitColumn) -> String {
         match column {
             UnitColumn::Name => self.name(),
@@ -226,12 +226,12 @@ impl TableViewItem<UnitColumn> for UnitOption {
     }
 }
 
-type UnitTable = TableView<UnitOption, UnitColumn>;
+type UnitTable = TableView<UnitOrRandom, UnitColumn>;
 // TODO: TreeView<Unit> with Unit implementing Display
 
 #[derive(Debug)]
 enum UnitTreeItem {
-    Unit(UnitOption),
+    Unit(UnitOrRandom),
     Formation(usize),
 }
 
@@ -367,7 +367,7 @@ pub fn start() {
     siv.run();
 }
 
-fn customise_group(s: &mut Cursive, available: Vec<UnitOption>) {
+fn customise_group(s: &mut Cursive, available: Vec<UnitOrRandom>) {
     fn add_selected(s: &mut Cursive, _row: usize, index: usize) {
         let available = s.find_name::<UnitTable>("available").unwrap();
         s.call_on_name("selected", |selected: &mut UnitTree| {
@@ -526,7 +526,7 @@ fn customise_group(s: &mut Cursive, available: Vec<UnitOption>) {
 }
 
 fn unit_table() -> UnitTable {
-    TableView::<UnitOption, UnitColumn>::new()
+    TableView::<UnitOrRandom, UnitColumn>::new()
         .column(UnitColumn::Name, "Name", |c| c.align(HAlign::Left))
         .column(UnitColumn::Nation, "Nation", |c| {
             c.align(HAlign::Center)
