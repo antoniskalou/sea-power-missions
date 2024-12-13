@@ -1,7 +1,8 @@
+use crate::mission;
 use crate::unit_db as db;
 
 use cursive::align::HAlign;
-use cursive::reexports::log::{log, LevelFilter};
+use cursive::reexports::log::{info, LevelFilter};
 use cursive::Cursive;
 use cursive::views::{Button, Dialog, DummyView, EditView, LinearLayout, ListView, Panel, ResizedView, SelectView, TextView};
 use cursive::traits::*;
@@ -353,7 +354,7 @@ pub fn start() {
     siv.add_layer(
         Dialog::new()
             .title("Create Mission")
-            .button("Generate", Cursive::quit)
+            .button("Generate", generate_mission)
             .button("Quit", Cursive::quit)
             .content(
                 LinearLayout::vertical()
@@ -365,6 +366,31 @@ pub fn start() {
     );
 
     siv.run();
+}
+
+fn generate_mission(s: &mut Cursive) {
+    let lat = s
+        .call_on_name("latitude", |view: &mut EditView| view.get_content())
+        .unwrap();
+    let lon = s
+        .call_on_name("longitude", |view: &mut EditView| view.get_content())
+        .unwrap();
+    // fixme: unwrap
+    let latlon = (lat.parse().unwrap(), lon.parse().unwrap());
+
+    let width = s
+        .call_on_name("size_w", |view: &mut EditView| view.get_content())
+        .unwrap();
+    let height = s
+        .call_on_name("size_h", |view: &mut EditView| view.get_content())
+        .unwrap();
+    // fixme: unwrap
+    let size = (width.parse().unwrap(), height.parse().unwrap());
+
+    let mut mission = mission::MissionOptions::default();
+    mission.general = mission::GeneralOptions { latlon, size, };
+
+    info!("{:?}", mission);
 }
 
 fn customise_group(s: &mut Cursive, available: Vec<UnitOrRandom>) {

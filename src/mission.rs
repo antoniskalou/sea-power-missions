@@ -233,6 +233,33 @@ pub struct MissionOptions {
     // TODO: add environment config
 }
 
+impl Default for MissionOptions {
+    fn default() -> Self {
+        Self {
+            general: GeneralOptions {
+                // somewhere in the eastern med
+                latlon: (34.31, 29.62),
+                size: (150, 150),
+            },
+            neutral: TaskforceOptions {
+                weapon_state: WeaponState::Hold,
+                units: vec![],
+                formations: vec![]
+            },
+            blue: TaskforceOptions {
+                weapon_state: WeaponState::Tight,
+                units: vec![],
+                formations: vec![],
+            },
+            red: TaskforceOptions {
+                weapon_state: WeaponState::Free,
+                units: vec![],
+                formations: vec![],
+            }
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Mission {
     options: MissionOptions,
