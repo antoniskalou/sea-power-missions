@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use crate::mission;
 use crate::unit_db as db;
 
@@ -248,27 +250,6 @@ impl std::fmt::Display for UnitTreeItem {
 
 type UnitTree = TreeView<UnitTreeItem>;
 
-#[derive(Debug)]
-struct UnitGroupState {
-    last_formation_id: Option<usize>,
-}
-
-impl UnitGroupState {
-    fn new() -> Self {
-        UnitGroupState {
-            last_formation_id: None,
-        }
-    }
-
-    fn formation_id(&mut self) -> usize {
-        let new_id = self.last_formation_id
-            .map(|id| id + 1)
-            .unwrap_or(1);
-        self.last_formation_id = Some(new_id);
-        new_id
-    }
-}
-
 pub fn start() {
     cursive::logger::init();
     // turn off internal cursive logging
@@ -435,18 +416,16 @@ fn customise_group(s: &mut Cursive, available: Vec<UnitOrRandom>) {
         });
     }
 
-    fn add_formation(s: &mut Cursive) {
-        let formation_id =
-            s.with_user_data(|user_data: &mut UnitGroupState| {
-                user_data.formation_id()
-            }).expect("user data not set");
+    fn add_formation(s: &mut Cursive, formation_id: Arc<Mutex<usize>>) {
+        let mut formation_id = formation_id.lock().unwrap();
+        *formation_id += 1;
 
         s.call_on_name("selected", |selected: &mut UnitTree| {
             let insert_at = selected.row()
                 .and_then(|row| selected.item_parent(row).or(Some(row)))
                 .unwrap_or(0);
             let n = selected.insert_item(
-                UnitTreeItem::Formation(formation_id),
+                UnitTreeItem::Formation(*formation_id),
                 Placement::After,
                 insert_at
             ).unwrap_or(0);
@@ -518,9 +497,12 @@ fn customise_group(s: &mut Cursive, available: Vec<UnitOrRandom>) {
             .with_name("available")
     ).title("Available");
 
+    let formation_id = Arc::new(Mutex::new(0));
     let create_formation_button =
-           LinearLayout::horizontal()
-            .child(Button::new("Create Formation", add_formation));
+        LinearLayout::horizontal()
+            .child(Button::new("Create Formation", move |s| {
+                add_formation(s, formation_id.clone());
+            }));
 
     let selected_panel = Panel::new(
         UnitTree::new()
@@ -530,7 +512,6 @@ fn customise_group(s: &mut Cursive, available: Vec<UnitOrRandom>) {
             .scrollable()
     ).title("Selected");
 
-    s.set_user_data(UnitGroupState::new());
     s.add_layer(
         Dialog::new()
             .title("Customise Group")
