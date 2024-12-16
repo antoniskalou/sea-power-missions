@@ -244,7 +244,7 @@ impl Default for MissionOptions {
             neutral: TaskforceOptions {
                 weapon_state: WeaponState::Hold,
                 units: vec![],
-                formations: vec![]
+                formations: vec![],
             },
             blue: TaskforceOptions {
                 weapon_state: WeaponState::Tight,
@@ -255,7 +255,7 @@ impl Default for MissionOptions {
                 weapon_state: WeaponState::Free,
                 units: vec![],
                 formations: vec![],
-            }
+            },
         }
     }
 }
