@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 
-use crate::mission;
+use crate::mission::{self, UnitOption};
+use crate::mission::MissionOptions;
 use crate::unit_db as db;
 
 use cursive::align::HAlign;
@@ -232,7 +233,7 @@ impl TableViewItem<UnitColumn> for UnitOrRandom {
 type UnitTable = TableView<UnitOrRandom, UnitColumn>;
 // TODO: TreeView<Unit> with Unit implementing Display
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 enum UnitTreeItem {
     Unit(UnitOrRandom),
     Formation(usize),
@@ -259,6 +260,8 @@ pub fn start() {
     siv.set_window_title("Sea Power Mission Generator");
     siv.add_global_callback('q', Cursive::quit);
     siv.add_global_callback('`', Cursive::toggle_debug_console);
+
+    let mission = Arc::new(Mutex::new(MissionOptions::default()));
 
     let general_form = ListView::new()
         .child(
@@ -295,10 +298,21 @@ pub fn start() {
     let neutral_form = ListView::new()
         .child(
             "Unit Groups",
-            Button::new("Customise...", |s| {
-                customise_group(s, units());
-            })
-        );
+            Button::new("Customise...", move |s| {
+                let view = CustomiseGroupView::new(units())
+                    .on_submit({
+                        let mission = mission.clone();
+                        move |s, units| {
+                            let mut mission = mission.lock().unwrap();
+                            mission.neutral.units = vec![
+                                UnitOption::Unit("civ_ms_kommunist".into()),
+                            ];
+                            info!("{:?}", mission);
+                        }
+                    })
+                    .into_view(s);
+                s.add_layer(view);
+            }));
 
     let blue_form = ListView::new()
         .child(
@@ -312,7 +326,12 @@ pub fn start() {
         .child(
             "Unit Groups",
             Button::new("Customise...", |s| {
-                customise_group(s, units());
+                let view = CustomiseGroupView::new(units())
+                    .on_submit(|s, units| {
+                        info!("{:?}", units);
+                    })
+                    .into_view(s);
+                s.add_layer(view);
             })
         );
 
@@ -328,7 +347,12 @@ pub fn start() {
         .child(
             "Unit Groups",
             Button::new("Customise...", |s| {
-                customise_group(s, units());
+                let view = CustomiseGroupView::new(units())
+                    .on_submit(|s, units| {
+                        info!("{:?}", units);
+                    })
+                    .into_view(s);
+                s.add_layer(view);
             })
         );
 
@@ -374,148 +398,175 @@ fn generate_mission(s: &mut Cursive) {
     info!("{:?}", mission);
 }
 
-fn customise_group(s: &mut Cursive, available: Vec<UnitOrRandom>) {
-    fn add_selected(s: &mut Cursive, _row: usize, index: usize) {
-        let available = s.find_name::<UnitTable>("available").unwrap();
-        s.call_on_name("selected", |selected: &mut UnitTree| {
-            if let Some(item) = available.borrow_item(index) {
-                let insert_at = selected.row().unwrap_or(0);
-                let placement = selected.borrow_item(insert_at)
-                    .and_then(|item| {
-                        if let UnitTreeItem::Formation(_) = item {
-                            Some(Placement::LastChild)
-                        } else {
-                            None
-                        }
-                    })
-                    .unwrap_or(Placement::After);
+type SubmitCallback = Arc<dyn Fn(&mut Cursive, Vec<UnitTreeItem>) + Send + Sync>;
+
+struct CustomiseGroupView {
+    available: Vec<UnitOrRandom>,
+    on_submit: Option<SubmitCallback>,
+}
+
+impl CustomiseGroupView {
+    fn new(available: Vec<UnitOrRandom>) -> Self {
+        Self {
+            available,
+            on_submit: None,
+        }
+    }
+
+    fn on_submit<F>(self, cb: F) -> Self
+    where
+        F: Fn(&mut Cursive, Vec<UnitTreeItem>) + Send + Sync + 'static
+    {
+        self.with(|v| v.on_submit = Some(Arc::new(move |s, items| cb(s, items))))
+    }
+
+    fn into_view(self, s: &mut Cursive) -> impl View {
+        fn add_selected(s: &mut Cursive, _row: usize, index: usize) {
+            let available = s.find_name::<UnitTable>("available").unwrap();
+            s.call_on_name("selected", |selected: &mut UnitTree| {
+                if let Some(item) = available.borrow_item(index) {
+                    let insert_at = selected.row().unwrap_or(0);
+                    let placement = selected.borrow_item(insert_at)
+                        .and_then(|item| {
+                            if let UnitTreeItem::Formation(_) = item {
+                                Some(Placement::LastChild)
+                            } else {
+                                None
+                            }
+                        })
+                        .unwrap_or(Placement::After);
+                    let n = selected.insert_item(
+                        UnitTreeItem::Unit(item.clone()),
+                        placement,
+                        insert_at
+                    ).unwrap_or(0);
+                    // select newly inserted row
+                    selected.set_selected_row(n);
+                }
+            });
+        }
+
+        fn remove_selected(s: &mut Cursive, row: usize) {
+            s.call_on_name("selected", |selected: &mut UnitTree| {
+                // FIXME: there's a bug in cursive_tree_view that if you attempt
+                // to delete the last remaining element (with row = 0) it will panic
+                // with: attempt to subtract with overflow
+                // stack backtrace:
+                // 3: cursive_tree_view::TreeView<enum2$<cursive_demo::UnitTreeItem> >::remove_item<enum2$<cursive_demo::UnitTreeItem> >
+                //   at C:<REDACTED>\registry\src\index.crates.io-6f17d22bba15001f\cursive_tree_view-0.9.0\src\lib.rs:396
+                if selected.len() > 1 {
+                    selected.remove_item(row);
+                } else {
+                    selected.clear();
+                }
+            });
+        }
+
+        fn add_formation(s: &mut Cursive, formation_id: Arc<Mutex<usize>>) {
+            let mut formation_id = formation_id.lock().unwrap();
+            *formation_id += 1;
+
+            s.call_on_name("selected", |selected: &mut UnitTree| {
+                let insert_at = selected.row()
+                    .and_then(|row| selected.item_parent(row).or(Some(row)))
+                    .unwrap_or(0);
                 let n = selected.insert_item(
-                    UnitTreeItem::Unit(item.clone()),
-                    placement,
+                    UnitTreeItem::Formation(*formation_id),
+                    Placement::After,
                     insert_at
                 ).unwrap_or(0);
-                // select newly inserted row
                 selected.set_selected_row(n);
-            }
-        });
-    }
+            });
+        }
 
-    fn remove_selected(s: &mut Cursive, row: usize) {
-        s.call_on_name("selected", |selected: &mut UnitTree| {
-            // FIXME: there's a bug in cursive_tree_view that if you attempt
-            // to delete the last remaining element (with row = 0) it will panic
-            // with: attempt to subtract with overflow
-            // stack backtrace:
-            // 3: cursive_tree_view::TreeView<enum2$<cursive_demo::UnitTreeItem> >::remove_item<enum2$<cursive_demo::UnitTreeItem> >
-             //   at C:<REDACTED>\registry\src\index.crates.io-6f17d22bba15001f\cursive_tree_view-0.9.0\src\lib.rs:396
-            if selected.len() > 1 {
-                selected.remove_item(row);
-            } else {
-                selected.clear();
-            }
-        });
-    }
+        fn filter(s: &mut Cursive, _item: &String) {
+            let nation = s.find_name::<SelectView>("filter_nation")
+                // FIXME
+                .unwrap().selection().unwrap();
+            let utype = s.find_name::<SelectView>("filter_utype")
+                .unwrap().selection().unwrap();
+            let units = units();
 
-    fn add_formation(s: &mut Cursive, formation_id: Arc<Mutex<usize>>) {
-        let mut formation_id = formation_id.lock().unwrap();
-        *formation_id += 1;
+            s.call_on_name("available", |available: &mut UnitTable| {
+                available.set_items(
+                    units.iter()
+                        .filter(|unit| {
+                            *nation == "<ALL>" || *nation == unit.nation()
+                        })
+                        .filter(|unit| {
+                            *utype == "<ALL>" || *utype == unit.utype()
+                        })
+                        .cloned()
+                        .collect()
+                );
+            });
+        }
 
-        s.call_on_name("selected", |selected: &mut UnitTree| {
-            let insert_at = selected.row()
-                .and_then(|row| selected.item_parent(row).or(Some(row)))
-                .unwrap_or(0);
-            let n = selected.insert_item(
-                UnitTreeItem::Formation(*formation_id),
-                Placement::After,
-                insert_at
-            ).unwrap_or(0);
-            selected.set_selected_row(n);
-        });
-    }
+        let filter_panel = Panel::new(
+            ListView::new()
+                .child(
+                    "Nation",
+                    SelectView::new()
+                        .popup()
+                        .item_str("<ALL>")
+                        .with_all_str(NATIONS)
+                        .on_submit(filter)
+                        .with_name("filter_nation")
+                        .max_width(20)
+                )
+                .child(
+                    "Type",
+                    SelectView::new()
+                        .popup()
+                        .item_str("<ALL>")
+                        .item_str("Ship")
+                        .item_str("Submarine")
+                        .on_submit(filter)
+                        .with_name("filter_utype")
+                        .max_width(20)
+                )
+                .child(
+                    "Random",
+                    SelectView::new()
+                        .popup()
+                        .item_str("<ALL>")
+                        .item_str("Only RANDOM")
+                        .item_str("No RANDOM")
+                        .max_width(20)
+                )
+        ).title("Filters");
 
-    fn filter(s: &mut Cursive, _item: &String) {
-        let nation = s.find_name::<SelectView>("filter_nation")
-            // FIXME
-            .unwrap().selection().unwrap();
-        let utype = s.find_name::<SelectView>("filter_utype")
-            .unwrap().selection().unwrap();
-        let units = units();
+        let available_panel = Panel::new(
+            unit_table()
+                .items(self.available)
+                .on_submit(add_selected)
+                .with_name("available")
+        ).title("Available");
 
-        s.call_on_name("available", |available: &mut UnitTable| {
-            available.set_items(
-                units.iter()
-                    .filter(|unit| {
-                        *nation == "<ALL>" || *nation == unit.nation()
-                    })
-                    .filter(|unit| {
-                        *utype == "<ALL>" || *utype == unit.utype()
-                    })
-                    .cloned()
-                    .collect()
-            );
-        });
-    }
+        let formation_id = Arc::new(Mutex::new(0));
+        let create_formation_button =
+            LinearLayout::horizontal()
+                .child(Button::new("Create Formation", move |s| {
+                    add_formation(s, formation_id.clone());
+                }));
 
-    let filter_panel = Panel::new(
-        ListView::new()
-            .child(
-                "Nation",
-                SelectView::new()
-                    .popup()
-                    .item_str("<ALL>")
-                    .with_all_str(NATIONS)
-                    .on_submit(filter)
-                    .with_name("filter_nation")
-                    .max_width(20)
-            )
-            .child(
-                "Type",
-                SelectView::new()
-                    .popup()
-                    .item_str("<ALL>")
-                    .item_str("Ship")
-                    .item_str("Submarine")
-                    .on_submit(filter)
-                    .with_name("filter_utype")
-                    .max_width(20)
-            )
-            .child(
-                "Random",
-                SelectView::new()
-                    .popup()
-                    .item_str("<ALL>")
-                    .item_str("Only RANDOM")
-                    .item_str("No RANDOM")
-                    .max_width(20)
-            )
-    ).title("Filters");
+        let selected_panel = Panel::new(
+            UnitTree::new()
+                .on_submit(remove_selected)
+                .on_collapse(|s, row, _, _| { remove_selected(s, row); })
+                .with_name("selected")
+                .scrollable()
+        ).title("Selected");
 
-    let available_panel = Panel::new(
-        unit_table()
-            .items(available)
-            .on_submit(add_selected)
-            .with_name("available")
-    ).title("Available");
-
-    let formation_id = Arc::new(Mutex::new(0));
-    let create_formation_button =
-        LinearLayout::horizontal()
-            .child(Button::new("Create Formation", move |s| {
-                add_formation(s, formation_id.clone());
-            }));
-
-    let selected_panel = Panel::new(
-        UnitTree::new()
-            .on_submit(remove_selected)
-            .on_collapse(|s, row, _, _| { remove_selected(s, row); })
-            .with_name("selected")
-            .scrollable()
-    ).title("Selected");
-
-    s.add_layer(
         Dialog::new()
             .title("Customise Group")
-            .button("Ok", |s| { s.pop_layer(); })
+            .button("Ok", move |s| {
+                if let Some(cb) = &self.on_submit {
+                    let selected = selected_units(s);
+                    cb(s, selected);
+                }
+                s.pop_layer();
+            })
             .button("Cancel", |s| { s.pop_layer(); })
             .content(
                 LinearLayout::vertical()
@@ -528,8 +579,21 @@ fn customise_group(s: &mut Cursive, available: Vec<UnitOrRandom>) {
             )
             .scrollable()
             .full_screen()
+    }
+}
 
-    );
+fn selected_units(s: &mut Cursive) -> Vec<UnitTreeItem> {
+    let selected_view = s.find_name::<UnitTree>("selected")
+        .expect("selected view missing");
+    // TreeView currently has no way to return a reference to all items, except
+    // for take_items (which is not what we want as it will clear the list)
+    let mut items: Vec<UnitTreeItem> = Vec::new();
+    for row in 0..selected_view.len() {
+        if let Some(item) = selected_view.borrow_item(row) {
+            items.push(item.clone());
+        }
+    }
+    items
 }
 
 fn unit_table() -> UnitTable {
