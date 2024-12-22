@@ -1,6 +1,6 @@
-use std::collections::LinkedList;
 use std::sync::Arc;
 
+use super::reusable_id::ReusableId;
 use super::UnitOrRandom;
 use cursive::align::HAlign;
 use cursive::wrap_impl;
@@ -114,14 +114,14 @@ pub struct UnitTreeSelection {
 
 /// A tree view that keeps track of units and associated formations.
 pub struct UnitTree {
-    last_formation_id: usize,
+    formation_id: ReusableId,
     view: TreeView<UnitTreeItem>,
 }
 
 impl UnitTree {
     pub fn new() -> Self {
         Self {
-            last_formation_id: 0,
+            formation_id: ReusableId::default(),
             view: TreeView::new(),
         }
     }
@@ -172,7 +172,7 @@ impl UnitTree {
     /// Add a formation to the tree, any units added after this will be added
     /// under this formation, until another formation has been created.
     pub fn add_formation(&mut self) {
-        let formation_id = self.next_formation_id();
+        let formation_id = self.formation_id.next();
         let insert_at = self
             .view
             .row()
@@ -191,6 +191,10 @@ impl UnitTree {
 
     /// Remove an item from the list.
     pub fn remove(&mut self, row: usize) {
+        if let Some(UnitTreeItem::Formation(id)) = self.view.borrow_item(row) {
+            self.formation_id.release(*id);
+        }
+
         // FIXME: there's a bug in cursive_tree_view that if you attempt
         // to delete the last remaining element (with row = 0) it will panic
         // with: attempt to subtract with overflow
@@ -225,7 +229,7 @@ impl UnitTree {
             }
         }
 
-        UnitTreeSelection { units, formations, }
+        UnitTreeSelection { units, formations }
     }
 
     fn items(&self) -> impl Iterator<Item = &UnitTreeItem> {
@@ -235,11 +239,6 @@ impl UnitTree {
             .into_iter()
             .map(|row| self.view.borrow_item(row))
             .flatten()
-    }
-
-    fn next_formation_id(&mut self) -> usize {
-        self.last_formation_id += 1;
-        self.last_formation_id
     }
 }
 

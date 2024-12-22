@@ -1,3 +1,4 @@
+mod reusable_id;
 mod views;
 
 use std::sync::{Arc, Mutex};
