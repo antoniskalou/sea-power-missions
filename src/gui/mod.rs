@@ -347,10 +347,7 @@ where
         });
     }
 
-    fn add_formation(s: &mut Cursive, formation_id: Arc<Mutex<usize>>) {
-        let mut formation_id = formation_id.lock().unwrap();
-        *formation_id += 1;
-
+    fn add_formation(s: &mut Cursive) {
         s.call_on_name("selected", |selected: &mut UnitTree| {
             selected.add_formation();
         });
@@ -416,11 +413,8 @@ where
     )
     .title("Available");
 
-    let formation_id = Arc::new(Mutex::new(0));
     let create_formation_button =
-        LinearLayout::horizontal().child(Button::new("Create Formation", move |s| {
-            add_formation(s, formation_id.clone());
-        }));
+        LinearLayout::horizontal().child(Button::new("Create Formation", add_formation));
 
     let selected_panel = Panel::new(
         UnitTree::new()

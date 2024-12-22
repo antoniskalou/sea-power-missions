@@ -97,12 +97,16 @@ impl std::fmt::Display for UnitTreeItem {
 }
 
 pub struct UnitTree {
+    last_formation_id: usize,
     view: TreeView<UnitTreeItem>,
 }
 
 impl UnitTree {
     pub fn new() -> Self {
-        Self { view: TreeView::new() }
+        Self {
+            last_formation_id: 0,
+            view: TreeView::new(),
+        }
     }
 
     pub fn on_submit<F>(mut self, cb: F) -> Self
@@ -141,8 +145,7 @@ impl UnitTree {
     }
 
     pub fn add_formation(&mut self) {
-        // TODO
-        let formation_id = 0;
+        let formation_id = self.next_formation_id();
         let insert_at = self.view
             .row()
             .and_then(|row| self.view.item_parent(row).or(Some(row)))
@@ -182,6 +185,11 @@ impl UnitTree {
             }
         }
         items
+    }
+
+    fn next_formation_id(&mut self) -> usize {
+        self.last_formation_id += 1;
+        self.last_formation_id
     }
 }
 
