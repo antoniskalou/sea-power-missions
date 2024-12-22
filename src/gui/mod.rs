@@ -1,10 +1,11 @@
+mod views;
+
 use std::sync::{Arc, Mutex};
 
 use crate::mission::MissionOptions;
 use crate::mission::{self, UnitOption};
 use crate::unit_db as db;
 
-use cursive::align::HAlign;
 use cursive::reexports::log::{info, LevelFilter};
 use cursive::traits::*;
 use cursive::views::{
@@ -12,8 +13,9 @@ use cursive::views::{
     TextView,
 };
 use cursive::Cursive;
-use cursive_table_view::{TableView, TableViewItem};
-use cursive_tree_view::{Placement, TreeView};
+use cursive_tree_view::Placement;
+
+use views::{unit_table, unit_tree, selected_units, UnitTree, UnitTreeItem, UnitTable};
 
 const NATIONS: [&'static str; 5] = ["Civilian", "USSR", "China", "Iran", "USA"];
 
@@ -198,55 +200,6 @@ fn units() -> Vec<UnitOrRandom> {
     ]
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-enum UnitColumn {
-    Name,
-    Nation,
-    Type,
-}
-
-impl TableViewItem<UnitColumn> for UnitOrRandom {
-    fn to_column(&self, column: UnitColumn) -> String {
-        match column {
-            UnitColumn::Name => self.name(),
-            UnitColumn::Nation => self.nation(),
-            UnitColumn::Type => self.utype(),
-        }
-    }
-
-    fn cmp(&self, other: &Self, column: UnitColumn) -> std::cmp::Ordering
-    where
-        Self: Sized,
-    {
-        match column {
-            UnitColumn::Name => self.name().cmp(&other.name()),
-            UnitColumn::Nation => self.nation().cmp(&other.nation()),
-            UnitColumn::Type => self.nation().cmp(&other.utype()),
-        }
-    }
-}
-
-type UnitTable = TableView<UnitOrRandom, UnitColumn>;
-// TODO: TreeView<Unit> with Unit implementing Display
-
-#[derive(Clone, Debug)]
-enum UnitTreeItem {
-    Unit(UnitOrRandom),
-    Formation(usize),
-}
-
-impl std::fmt::Display for UnitTreeItem {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use UnitTreeItem::*;
-        match self {
-            Unit(unit) => write!(f, "{}", unit.name()),
-            Formation(id) => write!(f, "Formation {id}"),
-        }
-    }
-}
-
-type UnitTree = TreeView<UnitTreeItem>;
-
 pub fn start() {
     cursive::logger::init();
     // turn off internal cursive logging
@@ -378,7 +331,7 @@ fn generate_mission(s: &mut Cursive, mut mission: MissionOptions) {
 
 fn customise_group_view<F>(available: Vec<UnitOrRandom>, on_submit: F) -> impl View
 where
-    F: Fn(&mut Cursive, Vec<UnitTreeItem>) + Send + Sync + 'static,
+    F: Fn(&mut Cursive, Vec<views::UnitTreeItem>) + Send + Sync + 'static,
 {
     fn add_selected(s: &mut Cursive, _row: usize, index: usize) {
         let available = s.find_name::<UnitTable>("available")
@@ -516,7 +469,7 @@ where
         }));
 
     let selected_panel = Panel::new(
-        UnitTree::new()
+        unit_tree()
             .on_submit(remove_selected)
             .on_collapse(|s, row, _, _| {
                 remove_selected(s, row);
@@ -545,28 +498,3 @@ where
         .full_screen()
 }
 
-fn selected_units(s: &mut Cursive) -> Vec<UnitTreeItem> {
-    let selected_view = s
-        .find_name::<UnitTree>("selected")
-        .expect("selected view missing");
-    // TreeView currently has no way to return a reference to all items, except
-    // for take_items (which is not what we want as it will clear the list)
-    let mut items: Vec<UnitTreeItem> = Vec::new();
-    for row in 0..selected_view.len() {
-        if let Some(item) = selected_view.borrow_item(row) {
-            items.push(item.clone());
-        }
-    }
-    items
-}
-
-fn unit_table() -> UnitTable {
-    TableView::<UnitOrRandom, UnitColumn>::new()
-        .column(UnitColumn::Name, "Name", |c| c.align(HAlign::Left))
-        .column(UnitColumn::Nation, "Nation", |c| {
-            c.align(HAlign::Center).width_percent(20)
-        })
-        .column(UnitColumn::Type, "Type", |c| {
-            c.align(HAlign::Right).width_percent(20)
-        })
-}
