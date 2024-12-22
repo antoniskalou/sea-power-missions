@@ -333,7 +333,9 @@ where
     F: Fn(&mut Cursive, Vec<views::UnitTreeItem>) + Send + Sync + 'static,
 {
     fn add_selected(s: &mut Cursive, index: usize) {
-        let available = s.find_name::<UnitTable>("available").unwrap();
+        let available = s
+            .find_name::<UnitTable>("available")
+            .expect("missing available view");
         if let Some(item) = available.borrow_item(index) {
             s.call_on_name("selected", |selected: &mut UnitTree| {
                 selected.add_unit(item.clone());
@@ -413,9 +415,6 @@ where
     )
     .title("Available");
 
-    let create_formation_button =
-        LinearLayout::horizontal().child(Button::new("Create Formation", add_formation));
-
     let selected_panel = Panel::new(
         UnitTree::new()
             .on_submit(remove_selected)
@@ -430,7 +429,8 @@ where
     Dialog::new()
         .title("Customise Group")
         .button("Ok", move |s| {
-            let view = s.find_name::<UnitTree>("selected")
+            let view = s
+                .find_name::<UnitTree>("selected")
                 .expect("missing selected view");
             on_submit(s, view.selected());
         })
@@ -438,7 +438,10 @@ where
             LinearLayout::vertical()
                 .child(filter_panel)
                 .child(available_panel.min_size((32, 20)))
-                .child(create_formation_button)
+                .child(
+                    LinearLayout::horizontal()
+                        .child(Button::new("Create Formation", add_formation)),
+                )
                 // spacing
                 .child(ResizedView::with_fixed_size((4, 0), DummyView))
                 .child(selected_panel.min_size((32, 20))),

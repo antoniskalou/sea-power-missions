@@ -127,7 +127,8 @@ impl UnitTree {
 
     pub fn add_unit(&mut self, unit: UnitOrRandom) {
         let insert_at = self.view.row().unwrap_or(0);
-        let placement = self.view
+        let placement = self
+            .view
             .borrow_item(insert_at)
             .and_then(|item| {
                 if let UnitTreeItem::Formation(_) = item {
@@ -137,7 +138,8 @@ impl UnitTree {
                 }
             })
             .unwrap_or(Placement::After);
-        let n = self.view
+        let n = self
+            .view
             .insert_item(UnitTreeItem::Unit(unit), placement, insert_at)
             .unwrap_or(0);
         // select newly inserted row
@@ -146,11 +148,13 @@ impl UnitTree {
 
     pub fn add_formation(&mut self) {
         let formation_id = self.next_formation_id();
-        let insert_at = self.view
+        let insert_at = self
+            .view
             .row()
             .and_then(|row| self.view.item_parent(row).or(Some(row)))
             .unwrap_or(0);
-        let n = self.view
+        let n = self
+            .view
             .insert_item(
                 UnitTreeItem::Formation(formation_id),
                 Placement::After,
