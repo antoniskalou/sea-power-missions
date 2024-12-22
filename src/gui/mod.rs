@@ -3,8 +3,7 @@ mod views;
 
 use std::sync::{Arc, Mutex};
 
-use crate::mission::MissionOptions;
-use crate::mission::{self, UnitOption};
+use crate::mission::{self, MissionOptions};
 use crate::unit_db as db;
 
 use cursive::reexports::log::{info, LevelFilter};
@@ -17,7 +16,7 @@ use cursive::Cursive;
 
 use views::{UnitTable, UnitTree};
 
-const NATIONS: [&'static str; 5] = ["Civilian", "USSR", "China", "Iran", "USA"];
+const NATIONS: [&str; 5] = ["Civilian", "USSR", "China", "Iran", "USA"];
 
 #[derive(Clone, Debug)]
 pub struct Unit {
@@ -355,7 +354,7 @@ where
         });
     }
 
-    fn filter(s: &mut Cursive, _item: &String) {
+    fn filter(s: &mut Cursive, _item: &str) {
         let nation = s
             .find_name::<SelectView>("filter_nation")
             .expect("missing filter_nation view")

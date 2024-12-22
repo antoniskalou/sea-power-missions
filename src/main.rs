@@ -13,7 +13,7 @@ use std::error::Error;
 use std::str;
 use unit_db::UnitDb;
 
-const MISSION_TEMPLATE: &'static str = include_str!("../resources/mission_template.ini");
+const MISSION_TEMPLATE: &str = include_str!("../resources/mission_template.ini");
 
 fn load_template() -> Result<Ini, String> {
     let mut config = Ini::new_cs();

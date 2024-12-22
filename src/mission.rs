@@ -51,13 +51,13 @@ impl Unit {
     }
 
     pub fn write_ini(&self, config: &mut Ini, section: &str) {
-        config.set(&section, "Type", Some(self.id.clone()));
+        config.set(section, "Type", Some(self.id.clone()));
         // speed setting
-        config.set(&section, "Telegraph", Some(3.to_string()));
+        config.set(section, "Telegraph", Some(3.to_string()));
         // defaults to "Green"
-        config.set(&section, "CrewSkill", Some("Trained".into()));
+        config.set(section, "CrewSkill", Some("Trained".into()));
         // defaults to "Depleted"
-        config.set(&section, "Stores", Some("Full".into()));
+        config.set(section, "Stores", Some("Full".into()));
 
         // generate our own positions and headings, don't use RandomSpawn*
         // because by having static positions the player can replay the mission
@@ -66,10 +66,10 @@ impl Unit {
         //
         // It also means that the generated config can be used by the mission editor
         // without overwriting the Random* options (which currently happens in v0.1.0.6).
-        config.set(&section, "Heading", Some(self.heading.to_string()));
+        config.set(section, "Heading", Some(self.heading.to_string()));
         {
             let (x, y) = self.position;
-            config.set(&section, "RelativePositionInNM", Some(format!("{x},0,{y}")));
+            config.set(section, "RelativePositionInNM", Some(format!("{x},0,{y}")));
         }
     }
 }
@@ -105,13 +105,13 @@ impl Taskforce {
     ) -> Self {
         let mut units = HashMap::new();
         // insert lone units (outside of formation)
-        insert_units(unit_db, &general, &mut units, &options.units);
+        insert_units(unit_db, general, &mut units, &options.units);
 
         let mut formations = Vec::new();
         for formation_opt in &options.formations {
             formations.push(insert_units(
                 unit_db,
-                &general,
+                general,
                 &mut units,
                 &formation_opt.units,
             ));
@@ -174,7 +174,7 @@ fn insert_units(
         .iter()
         .filter_map(|unit_opt| match unit_opt {
             UnitOption::Unit(id) => unit_db
-                .by_id(&id)
+                .by_id(id)
                 // TODO: fail if not found
                 .map(|unit| insert_unit(general, units, unit)),
             UnitOption::Random { nation, utype } => {
@@ -192,7 +192,7 @@ fn insert_unit(
     units: &mut HashMap<UnitType, Vec<Unit>>,
     db_unit: &unit_db::Unit,
 ) -> UnitReference {
-    let unit_list = units.entry(db_unit.utype).or_insert_with(Vec::new);
+    let unit_list = units.entry(db_unit.utype).or_default();
     let index = unit_list.len();
     unit_list.push(Unit::new(general, &db_unit.id));
     (db_unit.utype, index)

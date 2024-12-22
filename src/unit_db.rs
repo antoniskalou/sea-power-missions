@@ -83,11 +83,11 @@ fn load_nation_reference() -> Result<HashMap<String, String>, UnitDbError> {
     let mut nations = HashMap::new();
     if let Some(map) = config.get_map() {
         for (_, nation) in map {
-            let prefix = nation.get("nationprefix").map(|o| (*o).clone()).flatten();
-            let name = nation.get("nationname").map(|o| (*o).clone()).flatten();
-            prefix.zip(name).map(|(prefix, name)| {
+            let prefix = nation.get("nationprefix").and_then(|o| (*o).clone());
+            let name = nation.get("nationname").and_then(|o| (*o).clone());
+            if let Some((prefix, name)) = prefix.zip(name) {
                 nations.insert(prefix, name);
-            });
+            }
         }
     }
     Ok(nations)
@@ -111,7 +111,7 @@ fn load_vessels() -> Result<HashMap<String, Unit>, UnitDbError> {
             let config = load_ini(&path)?;
             let utype = config
                 .get("General", "UnitType")
-                .map(|t| UnitType::from(t))
+                .map(UnitType::from)
                 .unwrap_or(UnitType::Unknown);
             vessels.insert(id.clone(), Unit { id, nation, utype });
         }
@@ -183,7 +183,7 @@ impl UnitDb {
             .iter()
             .filter(|v| nation.map(|n| v.nation == n).unwrap_or(true))
             .filter(|v| utype.map(|s| v.utype == s).unwrap_or(true))
-            .map(|v| *v)
+            .copied()
             .collect()
     }
 }

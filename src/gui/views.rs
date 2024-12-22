@@ -235,10 +235,7 @@ impl UnitTree {
     fn items(&self) -> impl Iterator<Item = &UnitTreeItem> {
         // TreeView currently has no way to return a reference to all items, except
         // for take_items (which is not what we want as it will clear the list)
-        (0..self.view.len())
-            .into_iter()
-            .map(|row| self.view.borrow_item(row))
-            .flatten()
+        (0..self.view.len()).filter_map(|row| self.view.borrow_item(row))
     }
 }
 
