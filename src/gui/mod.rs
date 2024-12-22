@@ -332,11 +332,11 @@ fn customise_group_view<F>(available: Vec<UnitOrRandom>, on_submit: F) -> impl V
 where
     F: Fn(&mut Cursive, Vec<views::UnitTreeItem>) + Send + Sync + 'static,
 {
-    fn add_selected(s: &mut Cursive, index: usize) {
+    fn add_selected(s: &mut Cursive, row: usize) {
         let available = s
             .find_name::<UnitTable>("available")
             .expect("missing available view");
-        if let Some(item) = available.borrow_item(index) {
+        if let Some(item) = available.borrow_item(row) {
             s.call_on_name("selected", |selected: &mut UnitTree| {
                 selected.add_unit(item.clone());
             });
@@ -417,10 +417,7 @@ where
 
     let selected_panel = Panel::new(
         UnitTree::new()
-            .on_submit(remove_selected)
-            .on_collapse(|s, row| {
-                remove_selected(s, row);
-            })
+            .on_remove(remove_selected)
             .with_name("selected")
             .scrollable(),
     )

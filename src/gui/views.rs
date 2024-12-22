@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use super::UnitOrRandom;
 use cursive::align::HAlign;
 use cursive::wrap_impl;
@@ -63,8 +65,8 @@ impl UnitTable {
         );
     }
 
-    pub fn borrow_item(&self, index: usize) -> Option<&UnitOrRandom> {
-        self.view.borrow_item(index)
+    pub fn borrow_item(&self, row: usize) -> Option<&UnitOrRandom> {
+        self.view.borrow_item(row)
     }
 
     pub fn on_submit<F>(mut self, cb: F) -> Self
@@ -109,19 +111,19 @@ impl UnitTree {
         }
     }
 
-    pub fn on_submit<F>(mut self, cb: F) -> Self
+    pub fn on_remove<F>(mut self, cb: F) -> Self
     where
         F: Fn(&mut Cursive, usize) + Send + Sync + 'static,
     {
-        self.view.set_on_submit(cb);
-        self
-    }
-
-    pub fn on_collapse<F>(mut self, cb: F) -> Self
-    where
-        F: Fn(&mut Cursive, usize) + Send + Sync + 'static,
-    {
-        self.view.set_on_collapse(move |s, row, _, _| cb(s, row));
+        let cb = Arc::new(cb);
+        self.view.set_on_submit({
+            let cb = cb.clone();
+            move |s, row| cb(s, row)
+        });
+        self.view.set_on_collapse({
+            let cb = cb.clone();
+            move |s, row, _, _| cb(s, row)
+        });
         self
     }
 
