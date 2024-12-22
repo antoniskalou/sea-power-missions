@@ -35,12 +35,14 @@ impl TableViewItem<UnitColumn> for UnitOrRandom {
     }
 }
 
+/// A table view that keeps track of all available units.
 pub struct UnitTable {
     all_units: Vec<UnitOrRandom>,
     view: TableView<UnitOrRandom, UnitColumn>,
 }
 
 impl UnitTable {
+    /// Create a new unit table with a list of all available units.
     pub fn new(all_units: Vec<UnitOrRandom>) -> Self {
         let view = TableView::<UnitOrRandom, UnitColumn>::new()
             .column(UnitColumn::Name, "Name", |c| c.align(HAlign::Left))
@@ -54,6 +56,7 @@ impl UnitTable {
         Self { all_units, view }
     }
 
+    /// Filter units by nation or type.
     pub fn filter(&mut self, nation: &str, utype: &str) {
         self.view.set_items(
             self.all_units
@@ -65,10 +68,13 @@ impl UnitTable {
         );
     }
 
+    /// Return an immutable reference to the unit at the given row.
     pub fn borrow_item(&self, row: usize) -> Option<&UnitOrRandom> {
         self.view.borrow_item(row)
     }
 
+    /// Callback for when a unit has been "submitted", i.e. has been selected
+    /// for addition into another view.
     pub fn on_submit<F>(mut self, cb: F) -> Self
     where
         F: Fn(&mut Cursive, usize) + Send + Sync + 'static,
@@ -98,6 +104,7 @@ impl std::fmt::Display for UnitTreeItem {
     }
 }
 
+/// A tree view that keeps track of units and associated formations.
 pub struct UnitTree {
     last_formation_id: usize,
     view: TreeView<UnitTreeItem>,
@@ -111,6 +118,7 @@ impl UnitTree {
         }
     }
 
+    /// Callback for when an item has requested removal.
     pub fn on_remove<F>(mut self, cb: F) -> Self
     where
         F: Fn(&mut Cursive, usize) + Send + Sync + 'static,
@@ -127,6 +135,8 @@ impl UnitTree {
         self
     }
 
+    /// Add a unit to the tree, this will either be top level or if part of a
+    /// formation if previously defined.
     pub fn add_unit(&mut self, unit: UnitOrRandom) {
         let insert_at = self.view.row().unwrap_or(0);
         let placement = self
@@ -148,6 +158,8 @@ impl UnitTree {
         self.view.set_selected_row(n);
     }
 
+    /// Add a formation to the tree, any units added after this will be added
+    /// under this formation, until another formation has been created.
     pub fn add_formation(&mut self) {
         let formation_id = self.next_formation_id();
         let insert_at = self
@@ -166,6 +178,7 @@ impl UnitTree {
         self.view.set_selected_row(n);
     }
 
+    /// Remove an item from the list.
     pub fn remove(&mut self, row: usize) {
         // FIXME: there's a bug in cursive_tree_view that if you attempt
         // to delete the last remaining element (with row = 0) it will panic
@@ -180,6 +193,7 @@ impl UnitTree {
         }
     }
 
+    /// Return all selected items (units & formations) from the tree.
     // FIXME: return a different, more useful type
     pub fn selected(&self) -> Vec<UnitTreeItem> {
         // TreeView currently has no way to return a reference to all items, except
