@@ -1,3 +1,4 @@
+use std::collections::LinkedList;
 use std::sync::Arc;
 
 use super::UnitOrRandom;
@@ -107,8 +108,8 @@ impl std::fmt::Display for UnitTreeItem {
 // TODO: consider removing
 #[derive(Debug)]
 pub struct UnitTreeSelection {
-    units: Vec<UnitOrRandom>,
-    formations: Vec<Vec<UnitOrRandom>>,
+    pub units: Vec<UnitOrRandom>,
+    pub formations: Vec<Vec<UnitOrRandom>>,
 }
 
 /// A tree view that keeps track of units and associated formations.
@@ -204,21 +205,36 @@ impl UnitTree {
     }
 
     /// Return all selected items (units & formations) from the tree.
-    // FIXME: return a different, more useful type
     pub fn selected(&self) -> UnitTreeSelection {
-        // TreeView currently has no way to return a reference to all items, except
-        // for take_items (which is not what we want as it will clear the list)
         let mut units = Vec::new();
-        for row in 0..self.view.len() {
-            if let Some(item) = self.view.borrow_item(row) {
-                match item {
-                    UnitTreeItem::Unit(unit) => units.push(unit.clone()),
-                    _ => {}
+        let mut formations: Vec<Vec<UnitOrRandom>> = Vec::new();
+        for item in self.items() {
+            match item {
+                UnitTreeItem::Unit(unit) => {
+                    // if we had previously added a formation then all subsequent
+                    // units will be part of that formation.
+                    if let Some(formation) = formations.last_mut() {
+                        formation.push(unit.clone());
+                    } else {
+                        units.push(unit.clone());
+                    }
+                }
+                UnitTreeItem::Formation(_) => {
+                    formations.push(Vec::new());
                 }
             }
         }
 
-        UnitTreeSelection { units, formations: vec![] }
+        UnitTreeSelection { units, formations, }
+    }
+
+    fn items(&self) -> impl Iterator<Item = &UnitTreeItem> {
+        // TreeView currently has no way to return a reference to all items, except
+        // for take_items (which is not what we want as it will clear the list)
+        (0..self.view.len())
+            .into_iter()
+            .map(|row| self.view.borrow_item(row))
+            .flatten()
     }
 
     fn next_formation_id(&mut self) -> usize {
