@@ -3,7 +3,7 @@ use cursive::align::HAlign;
 use cursive::wrap_impl;
 use cursive::{view::ViewWrapper, Cursive};
 use cursive_table_view::{TableView, TableViewItem};
-use cursive_tree_view::TreeView;
+use cursive_tree_view::{Placement, TreeView};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum UnitColumn {
@@ -96,23 +96,95 @@ impl std::fmt::Display for UnitTreeItem {
     }
 }
 
-pub type UnitTree = TreeView<UnitTreeItem>;
-
-pub fn unit_tree() -> UnitTree {
-    UnitTree::new()
+pub struct UnitTree {
+    view: TreeView<UnitTreeItem>,
 }
 
-pub fn selected_units(s: &mut Cursive) -> Vec<UnitTreeItem> {
-    let selected_view = s
-        .find_name::<UnitTree>("selected")
-        .expect("selected view missing");
-    // TreeView currently has no way to return a reference to all items, except
-    // for take_items (which is not what we want as it will clear the list)
-    let mut items: Vec<UnitTreeItem> = Vec::new();
-    for row in 0..selected_view.len() {
-        if let Some(item) = selected_view.borrow_item(row) {
-            items.push(item.clone());
+impl UnitTree {
+    pub fn new() -> Self {
+        Self { view: TreeView::new() }
+    }
+
+    pub fn on_submit<F>(mut self, cb: F) -> Self
+    where
+        F: Fn(&mut Cursive, usize) + Send + Sync + 'static,
+    {
+        self.view.set_on_submit(cb);
+        self
+    }
+
+    pub fn on_collapse<F>(mut self, cb: F) -> Self
+    where
+        F: Fn(&mut Cursive, usize) + Send + Sync + 'static,
+    {
+        self.view.set_on_collapse(move |s, row, _, _| cb(s, row));
+        self
+    }
+
+    pub fn add_unit(&mut self, unit: UnitOrRandom) {
+        let insert_at = self.view.row().unwrap_or(0);
+        let placement = self.view
+            .borrow_item(insert_at)
+            .and_then(|item| {
+                if let UnitTreeItem::Formation(_) = item {
+                    Some(Placement::LastChild)
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(Placement::After);
+        let n = self.view
+            .insert_item(UnitTreeItem::Unit(unit), placement, insert_at)
+            .unwrap_or(0);
+        // select newly inserted row
+        self.view.set_selected_row(n);
+    }
+
+    pub fn add_formation(&mut self) {
+        // TODO
+        let formation_id = 0;
+        let insert_at = self.view
+            .row()
+            .and_then(|row| self.view.item_parent(row).or(Some(row)))
+            .unwrap_or(0);
+        let n = self.view
+            .insert_item(
+                UnitTreeItem::Formation(formation_id),
+                Placement::After,
+                insert_at,
+            )
+            .unwrap_or(0);
+        self.view.set_selected_row(n);
+    }
+
+    pub fn remove(&mut self, row: usize) {
+        // FIXME: there's a bug in cursive_tree_view that if you attempt
+        // to delete the last remaining element (with row = 0) it will panic
+        // with: attempt to subtract with overflow
+        // stack backtrace:
+        // 3: cursive_tree_view::TreeView<enum2$<cursive_demo::UnitTreeItem> >::remove_item<enum2$<cursive_demo::UnitTreeItem> >
+        //   at C:<REDACTED>\registry\src\index.crates.io-6f17d22bba15001f\cursive_tree_view-0.9.0\src\lib.rs:396
+        if self.view.len() > 1 {
+            self.view.remove_item(row);
+        } else {
+            self.view.clear();
         }
     }
-    items
+
+    // FIXME: return a different, more useful type
+    pub fn selected(&self) -> Vec<UnitTreeItem> {
+        // TreeView currently has no way to return a reference to all items, except
+        // for take_items (which is not what we want as it will clear the list)
+        let mut items: Vec<UnitTreeItem> = Vec::new();
+        for row in 0..self.view.len() {
+            if let Some(item) = self.view.borrow_item(row) {
+                items.push(item.clone());
+            }
+        }
+        items
+    }
+}
+
+impl ViewWrapper for UnitTree {
+    wrap_impl!(self.view: TreeView<UnitTreeItem>);
 }

@@ -13,9 +13,8 @@ use cursive::views::{
     TextView,
 };
 use cursive::Cursive;
-use cursive_tree_view::Placement;
 
-use views::{selected_units, unit_tree, UnitTable, UnitTree, UnitTreeItem};
+use views::{UnitTable, UnitTree};
 
 const NATIONS: [&'static str; 5] = ["Civilian", "USSR", "China", "Iran", "USA"];
 
@@ -337,39 +336,14 @@ where
         let available = s.find_name::<UnitTable>("available").unwrap();
         if let Some(item) = available.borrow_item(index) {
             s.call_on_name("selected", |selected: &mut UnitTree| {
-                let insert_at = selected.row().unwrap_or(0);
-                let placement = selected
-                    .borrow_item(insert_at)
-                    .and_then(|item| {
-                        if let UnitTreeItem::Formation(_) = item {
-                            Some(Placement::LastChild)
-                        } else {
-                            None
-                        }
-                    })
-                    .unwrap_or(Placement::After);
-                let n = selected
-                    .insert_item(UnitTreeItem::Unit(item.clone()), placement, insert_at)
-                    .unwrap_or(0);
-                // select newly inserted row
-                selected.set_selected_row(n);
+                selected.add_unit(item.clone());
             });
         }
     }
 
     fn remove_selected(s: &mut Cursive, row: usize) {
         s.call_on_name("selected", |selected: &mut UnitTree| {
-            // FIXME: there's a bug in cursive_tree_view that if you attempt
-            // to delete the last remaining element (with row = 0) it will panic
-            // with: attempt to subtract with overflow
-            // stack backtrace:
-            // 3: cursive_tree_view::TreeView<enum2$<cursive_demo::UnitTreeItem> >::remove_item<enum2$<cursive_demo::UnitTreeItem> >
-            //   at C:<REDACTED>\registry\src\index.crates.io-6f17d22bba15001f\cursive_tree_view-0.9.0\src\lib.rs:396
-            if selected.len() > 1 {
-                selected.remove_item(row);
-            } else {
-                selected.clear();
-            }
+            selected.remove(row);
         });
     }
 
@@ -378,18 +352,7 @@ where
         *formation_id += 1;
 
         s.call_on_name("selected", |selected: &mut UnitTree| {
-            let insert_at = selected
-                .row()
-                .and_then(|row| selected.item_parent(row).or(Some(row)))
-                .unwrap_or(0);
-            let n = selected
-                .insert_item(
-                    UnitTreeItem::Formation(*formation_id),
-                    Placement::After,
-                    insert_at,
-                )
-                .unwrap_or(0);
-            selected.set_selected_row(n);
+            selected.add_formation();
         });
     }
 
@@ -460,9 +423,9 @@ where
         }));
 
     let selected_panel = Panel::new(
-        unit_tree()
+        UnitTree::new()
             .on_submit(remove_selected)
-            .on_collapse(|s, row, _, _| {
+            .on_collapse(|s, row| {
                 remove_selected(s, row);
             })
             .with_name("selected")
@@ -473,8 +436,9 @@ where
     Dialog::new()
         .title("Customise Group")
         .button("Ok", move |s| {
-            let selected = selected_units(s);
-            on_submit(s, selected);
+            let view = s.find_name::<UnitTree>("selected")
+                .expect("missing selected view");
+            on_submit(s, view.selected());
         })
         .content(
             LinearLayout::vertical()
