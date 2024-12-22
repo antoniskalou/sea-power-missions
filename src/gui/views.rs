@@ -1,8 +1,9 @@
-use cursive::Cursive;
+use super::UnitOrRandom;
 use cursive::align::HAlign;
+use cursive::wrap_impl;
+use cursive::{view::ViewWrapper, Cursive};
 use cursive_table_view::{TableView, TableViewItem};
 use cursive_tree_view::TreeView;
-use super::UnitOrRandom;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum UnitColumn {
@@ -32,17 +33,51 @@ impl TableViewItem<UnitColumn> for UnitOrRandom {
     }
 }
 
-pub type UnitTable = TableView<UnitOrRandom, UnitColumn>;
+pub struct UnitTable {
+    all_units: Vec<UnitOrRandom>,
+    view: TableView<UnitOrRandom, UnitColumn>,
+}
 
-pub fn unit_table() -> UnitTable {
-    TableView::<UnitOrRandom, UnitColumn>::new()
-        .column(UnitColumn::Name, "Name", |c| c.align(HAlign::Left))
-        .column(UnitColumn::Nation, "Nation", |c| {
-            c.align(HAlign::Center).width_percent(20)
-        })
-        .column(UnitColumn::Type, "Type", |c| {
-            c.align(HAlign::Right).width_percent(20)
-        })
+impl UnitTable {
+    pub fn new(all_units: Vec<UnitOrRandom>) -> Self {
+        let view = TableView::<UnitOrRandom, UnitColumn>::new()
+            .column(UnitColumn::Name, "Name", |c| c.align(HAlign::Left))
+            .column(UnitColumn::Nation, "Nation", |c| {
+                c.align(HAlign::Center).width_percent(20)
+            })
+            .column(UnitColumn::Type, "Type", |c| {
+                c.align(HAlign::Right).width_percent(20)
+            })
+            .items(all_units.clone());
+        Self { all_units, view }
+    }
+
+    pub fn filter(&mut self, nation: &str, utype: &str) {
+        self.view.set_items(
+            self.all_units
+                .iter()
+                .filter(|unit| nation == "<ALL>" || nation == unit.nation())
+                .filter(|unit| utype == "<ALL>" || utype == unit.utype())
+                .cloned()
+                .collect(),
+        );
+    }
+
+    pub fn borrow_item(&self, index: usize) -> Option<&UnitOrRandom> {
+        self.view.borrow_item(index)
+    }
+
+    pub fn on_submit<F>(mut self, cb: F) -> Self
+    where
+        F: Fn(&mut Cursive, usize) + Send + Sync + 'static,
+    {
+        self.view.set_on_submit(move |s, _row, index| cb(s, index));
+        self
+    }
+}
+
+impl ViewWrapper for UnitTable {
+    wrap_impl!(self.view: TableView<UnitOrRandom, UnitColumn>);
 }
 
 #[derive(Clone, Debug)]

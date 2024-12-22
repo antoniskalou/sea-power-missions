@@ -15,12 +15,12 @@ use cursive::views::{
 use cursive::Cursive;
 use cursive_tree_view::Placement;
 
-use views::{unit_table, unit_tree, selected_units, UnitTree, UnitTreeItem, UnitTable};
+use views::{selected_units, unit_tree, UnitTable, UnitTree, UnitTreeItem};
 
 const NATIONS: [&'static str; 5] = ["Civilian", "USSR", "China", "Iran", "USA"];
 
 #[derive(Clone, Debug)]
-struct Unit {
+pub struct Unit {
     id: String,
     name: String,
     nation: String,
@@ -29,7 +29,7 @@ struct Unit {
 }
 
 #[derive(Clone, Debug)]
-enum UnitOrRandom {
+pub enum UnitOrRandom {
     Unit(Unit),
     Random {
         nation: Option<String>,
@@ -333,9 +333,8 @@ fn customise_group_view<F>(available: Vec<UnitOrRandom>, on_submit: F) -> impl V
 where
     F: Fn(&mut Cursive, Vec<views::UnitTreeItem>) + Send + Sync + 'static,
 {
-    fn add_selected(s: &mut Cursive, _row: usize, index: usize) {
-        let available = s.find_name::<UnitTable>("available")
-            .unwrap();
+    fn add_selected(s: &mut Cursive, index: usize) {
+        let available = s.find_name::<UnitTable>("available").unwrap();
         if let Some(item) = available.borrow_item(index) {
             s.call_on_name("selected", |selected: &mut UnitTree| {
                 let insert_at = selected.row().unwrap_or(0);
@@ -406,16 +405,9 @@ where
             .expect("missing filter_utype view")
             .selection()
             .unwrap();
-        let units = units();
 
         s.call_on_name("available", |available: &mut UnitTable| {
-            available.set_items(
-                units
-                    .into_iter()
-                    .filter(|unit| *nation == "<ALL>" || *nation == unit.nation())
-                    .filter(|unit| *utype == "<ALL>" || *utype == unit.utype())
-                    .collect(),
-            );
+            available.filter(&nation, &utype);
         });
     }
 
@@ -455,8 +447,7 @@ where
     .title("Filters");
 
     let available_panel = Panel::new(
-        unit_table()
-            .items(available)
+        UnitTable::new(available)
             .on_submit(add_selected)
             .with_name("available"),
     )
@@ -497,4 +488,3 @@ where
         .scrollable()
         .full_screen()
 }
-
