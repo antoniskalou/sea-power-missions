@@ -104,6 +104,13 @@ impl std::fmt::Display for UnitTreeItem {
     }
 }
 
+// TODO: consider removing
+#[derive(Debug)]
+pub struct UnitTreeSelection {
+    units: Vec<UnitOrRandom>,
+    formations: Vec<Vec<UnitOrRandom>>,
+}
+
 /// A tree view that keeps track of units and associated formations.
 pub struct UnitTree {
     last_formation_id: usize,
@@ -117,6 +124,9 @@ impl UnitTree {
             view: TreeView::new(),
         }
     }
+
+    // TODO: allow creating with items so as to re-fill list if re-opened
+    // pub fn with_items(items: Vec<UnitOrRandom>) -> Self {}
 
     /// Callback for when an item has requested removal.
     pub fn on_remove<F>(mut self, cb: F) -> Self
@@ -195,16 +205,20 @@ impl UnitTree {
 
     /// Return all selected items (units & formations) from the tree.
     // FIXME: return a different, more useful type
-    pub fn selected(&self) -> Vec<UnitTreeItem> {
+    pub fn selected(&self) -> UnitTreeSelection {
         // TreeView currently has no way to return a reference to all items, except
         // for take_items (which is not what we want as it will clear the list)
-        let mut items: Vec<UnitTreeItem> = Vec::new();
+        let mut units = Vec::new();
         for row in 0..self.view.len() {
             if let Some(item) = self.view.borrow_item(row) {
-                items.push(item.clone());
+                match item {
+                    UnitTreeItem::Unit(unit) => units.push(unit.clone()),
+                    _ => {}
+                }
             }
         }
-        items
+
+        UnitTreeSelection { units, formations: vec![] }
     }
 
     fn next_formation_id(&mut self) -> usize {

@@ -232,10 +232,9 @@ pub fn start() {
         ListView::new().child(
             "Unit Groups",
             Button::new("Customise...", move |s| {
-                let mission = mission.clone();
-                let view = customise_group_view(units(), move |s, _| {
-                    let mut mission = mission.lock().unwrap();
-                    mission.neutral.units = vec![UnitOption::Unit("civ_ms_kommunist".into())];
+                let _mission = mission.clone();
+                let view = customise_group_view(units(), move |s, selected| {
+                    info!("selected cb: {:?}", selected);
                     s.pop_layer();
                 });
                 s.add_layer(view);
@@ -330,7 +329,7 @@ fn generate_mission(s: &mut Cursive, mut mission: MissionOptions) {
 
 fn customise_group_view<F>(available: Vec<UnitOrRandom>, on_submit: F) -> impl View
 where
-    F: Fn(&mut Cursive, Vec<views::UnitTreeItem>) + Send + Sync + 'static,
+    F: Fn(&mut Cursive, views::UnitTreeSelection) + Send + Sync + 'static,
 {
     fn add_selected(s: &mut Cursive, row: usize) {
         let available = s
