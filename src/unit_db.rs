@@ -59,6 +59,7 @@ pub type UnitId = String;
 #[derive(Clone, Debug)]
 pub struct Unit {
     pub id: UnitId,
+    pub name: String,
     pub nation: String,
     pub utype: UnitType,
 }
@@ -93,7 +94,27 @@ fn load_nation_reference() -> Result<HashMap<String, String>, UnitDbError> {
     Ok(nations)
 }
 
+fn split_name_parts(name: &str) -> Vec<&str> {
+    name.split(",").collect()
+}
+
+fn load_vessel_names() -> Result<HashMap<String, String>, UnitDbError> {
+    let config = load_ini(&dir::original_dir().join("language_en/vessel_names.ini"))?;
+    let mut names = HashMap::new();
+    if let Some(map) = config.get_map() {
+        for (id, config) in map {
+            let default = config.get("default").and_then(|o| (*o).clone());
+            if let Some(name_parts) = default {
+                let name = split_name_parts(&name_parts)[0];
+                names.insert(id, name.to_string());
+            }
+        }
+    }
+    Ok(names)
+}
+
 fn load_vessels() -> Result<HashMap<String, Unit>, UnitDbError> {
+    let names = load_vessel_names()?;
     let mut vessels = HashMap::new();
     for entry in fs::read_dir(dir::vessel_dir())? {
         let entry = entry?;
@@ -107,13 +128,15 @@ fn load_vessels() -> Result<HashMap<String, Unit>, UnitDbError> {
 
         if let Some((nation, _)) = id.split_once("_") {
             let id = id.to_owned();
+            // if it doesn't exist, default to the ID
+            let name = names.get(&id).unwrap_or(&id).to_string();
             let nation = nation.to_owned();
             let config = load_ini(&path)?;
             let utype = config
                 .get("General", "UnitType")
                 .map(UnitType::from)
                 .unwrap_or(UnitType::Unknown);
-            vessels.insert(id.clone(), Unit { id, nation, utype });
+            vessels.insert(id.clone(), Unit { id, name, nation, utype });
         }
     }
     Ok(vessels)
