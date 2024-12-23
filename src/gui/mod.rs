@@ -16,7 +16,7 @@ use cursive::Cursive;
 
 use views::{UnitTable, UnitTree};
 
-const NATIONS: [&str; 5] = ["Civilian", "USSR", "China", "Iran", "USA"];
+const NATIONS: [&str; 5] = ["Civilian", "Soviet", "China", "Iran", "US"];
 
 #[derive(Clone, Debug)]
 pub enum UnitOrRandom {
@@ -45,7 +45,7 @@ impl UnitOrRandom {
 
     fn nation(&self) -> String {
         match self {
-            UnitOrRandom::Unit(unit) => unit.nation.clone(),
+            UnitOrRandom::Unit(unit) => unit.nation.name.clone(),
             UnitOrRandom::Random { nation, .. } => nation.clone().unwrap_or("<RANDOM>".into()),
         }
     }
@@ -71,27 +71,27 @@ fn randoms() -> Vec<UnitOrRandom> {
             utype: None,
         },
         UnitOrRandom::Random {
-            nation: Some("USSR".into()),
+            nation: Some("Soviet".into()),
             utype: None,
         },
         UnitOrRandom::Random {
-            nation: Some("USSR".into()),
+            nation: Some("Soviet".into()),
             utype: Some(Ship),
         },
         UnitOrRandom::Random {
-            nation: Some("USSR".into()),
+            nation: Some("Soviet".into()),
             utype: Some(Submarine),
         },
         UnitOrRandom::Random {
-            nation: Some("USA".into()),
+            nation: Some("US".into()),
             utype: None,
         },
         UnitOrRandom::Random {
-            nation: Some("USA".into()),
+            nation: Some("US".into()),
             utype: Some(Ship),
         },
         UnitOrRandom::Random {
-            nation: Some("USA".into()),
+            nation: Some("US".into()),
             utype: Some(Submarine),
         },
         UnitOrRandom::Random {
@@ -171,7 +171,7 @@ pub fn start() {
             "Nation",
             SelectView::new()
                 .popup()
-                .item_str("USSR")
+                .item_str("Soviet")
                 .item_str("China")
                 .item_str("Iran"),
         )
@@ -190,7 +190,7 @@ pub fn start() {
             "Nation",
             SelectView::new()
                 .popup()
-                .item_str("USA")
+                .item_str("US")
                 .item_str("Iraq")
                 .item_str("Norway"),
         )
@@ -313,7 +313,7 @@ where
                 SelectView::new()
                     .popup()
                     .item_str("<ALL>")
-                    .item_str("Ship")
+                    .item_str("Vessel")
                     .item_str("Submarine")
                     .on_submit(filter)
                     .with_name("filter_utype")

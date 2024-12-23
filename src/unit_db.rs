@@ -54,13 +54,19 @@ impl std::fmt::Display for UnitType {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct Nation {
+    pub id: String,
+    pub name: String,
+}
+
 pub type UnitId = String;
 
 #[derive(Clone, Debug)]
 pub struct Unit {
     pub id: UnitId,
     pub name: String,
-    pub nation: String,
+    pub nation: Nation,
     pub utype: UnitType,
 }
 
@@ -77,16 +83,17 @@ fn load_ini(path: &Path) -> Result<Ini, String> {
     Ok(config)
 }
 
-fn load_nation_reference() -> Result<HashMap<String, String>, UnitDbError> {
-    let config = load_ini(&dir::original_dir().join("language_en/nations.ini"))?;
+fn load_nation_reference() -> Result<HashMap<String, Nation>, UnitDbError> {
+    let config = load_ini(&dir::original_dir().join("nations_reference.ini"))?;
 
     let mut nations = HashMap::new();
     if let Some(map) = config.get_map() {
         for (_, nation) in map {
-            let prefix = nation.get("nationprefix").and_then(|o| (*o).clone());
+            let id = nation.get("nationprefix").and_then(|o| (*o).clone());
             let name = nation.get("nationname").and_then(|o| (*o).clone());
-            if let Some((prefix, name)) = prefix.zip(name) {
-                nations.insert(prefix, name);
+            if let Some((id, name)) = id.zip(name) {
+                let nation = Nation { id: id.clone(), name, };
+                nations.insert(id, nation);
             }
         }
     }
@@ -112,9 +119,10 @@ fn load_vessel_names() -> Result<HashMap<String, String>, UnitDbError> {
     Ok(names)
 }
 
-fn load_vessels() -> Result<HashMap<String, Unit>, UnitDbError> {
+fn load_vessels(nations: &HashMap<String, Nation>) -> Result<HashMap<String, Unit>, UnitDbError> {
     let names = load_vessel_names()?;
     let mut vessels = HashMap::new();
+    eprintln!("{:#?}", nations);
     for entry in fs::read_dir(dir::vessel_dir())? {
         let entry = entry?;
         let path = entry.path();
@@ -125,17 +133,20 @@ fn load_vessels() -> Result<HashMap<String, Unit>, UnitDbError> {
             continue;
         }
 
-        if let Some((nation, _)) = id.split_once("_") {
+        if let Some((nation_id, _)) = id.split_once("_") {
             let id = id.to_owned();
             // if it doesn't exist, default to the ID
             let name = names.get(&id).unwrap_or(&id).to_string();
-            let nation = nation.to_owned();
-            let config = load_ini(&path)?;
-            let utype = config
-                .get("General", "UnitType")
-                .map(UnitType::from)
-                .unwrap_or(UnitType::Unknown);
-            vessels.insert(id.clone(), Unit { id, name, nation, utype });
+            // FIXME: way too many nested ifs
+            if let Some(nation) = nations.get(nation_id) {
+                let config = load_ini(&path)?;
+                let nation = nation.clone();
+                let utype = config
+                    .get("General", "UnitType")
+                    .map(UnitType::from)
+                    .unwrap_or(UnitType::Unknown);
+                vessels.insert(id.clone(), Unit { id, name, nation, utype });
+            }
         }
     }
     Ok(vessels)
@@ -166,7 +177,7 @@ impl From<String> for UnitDbError {
 #[derive(Debug)]
 pub struct UnitDb {
     /// map of nation id => nation name
-    nations: HashMap<String, String>,
+    nations: HashMap<String, Nation>,
     // map of unit id => unit
     units: HashMap<String, Unit>,
 }
@@ -175,12 +186,12 @@ impl UnitDb {
     pub fn new() -> Result<Self, UnitDbError> {
         let nations = load_nation_reference()?;
         let mut units = HashMap::new();
-        units.extend(load_vessels()?);
+        units.extend(load_vessels(&nations)?);
         units.extend(load_aircraft()?);
         Ok(Self { nations, units })
     }
 
-    pub fn nation_name(&self, id: &str) -> Option<&String> {
+    pub fn nation(&self, id: &str) -> Option<&Nation> {
         self.nations.get(id)
     }
 
@@ -193,7 +204,7 @@ impl UnitDb {
     }
 
     pub fn by_nation(&self, nation: &str) -> Vec<&Unit> {
-        self.units.values().filter(|v| v.nation == nation).collect()
+        self.units.values().filter(|v| v.nation.id == nation).collect()
     }
 
     pub fn by_type(&self, utype: UnitType) -> Vec<&Unit> {
@@ -203,7 +214,7 @@ impl UnitDb {
     pub fn search(&self, nation: Option<&str>, utype: Option<UnitType>) -> Vec<&Unit> {
         self.all()
             .iter()
-            .filter(|v| nation.map(|n| v.nation == n).unwrap_or(true))
+            .filter(|v| nation.map(|n| v.nation.id == n).unwrap_or(true))
             .filter(|v| utype.map(|s| v.utype == s).unwrap_or(true))
             .copied()
             .collect()
