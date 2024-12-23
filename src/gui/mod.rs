@@ -4,7 +4,7 @@ mod views;
 use std::sync::{Arc, Mutex};
 
 use crate::mission::{self, MissionOptions};
-use crate::unit_db as db;
+use crate::unit_db::{self, Unit, UnitType};
 
 use cursive::reexports::log::{info, LevelFilter};
 use cursive::traits::*;
@@ -19,20 +19,11 @@ use views::{UnitTable, UnitTree};
 const NATIONS: [&str; 5] = ["Civilian", "USSR", "China", "Iran", "USA"];
 
 #[derive(Clone, Debug)]
-pub struct Unit {
-    id: String,
-    name: String,
-    nation: String,
-    // TODO: have a type of unit (e.g. Carrier Unit)
-    utype: db::UnitType,
-}
-
-#[derive(Clone, Debug)]
 pub enum UnitOrRandom {
     Unit(Unit),
     Random {
         nation: Option<String>,
-        utype: Option<db::UnitType>,
+        utype: Option<UnitType>,
     },
 }
 
@@ -72,8 +63,8 @@ impl UnitOrRandom {
 // #[derive(Clone, Debug)]
 // struct MaybeUnit(UnitOrRandom);
 
-fn units() -> Vec<UnitOrRandom> {
-    use db::UnitType::*;
+fn randoms() -> Vec<UnitOrRandom> {
+    use UnitType::*;
     vec![
         UnitOrRandom::Random {
             nation: None,
@@ -115,88 +106,21 @@ fn units() -> Vec<UnitOrRandom> {
             nation: Some("China".into()),
             utype: Some(Submarine),
         },
-        // Civilian
-        UnitOrRandom::Unit(Unit {
-            id: "civ_ms_act_1".into(),
-            name: "ACT 1-class".into(),
-            nation: "Civilian".into(),
-            utype: Ship,
-        }),
-        UnitOrRandom::Unit(Unit {
-            id: "civ_fv_sampan".into(),
-            name: "Sampan".into(),
-            nation: "Civilian".into(),
-            utype: Ship,
-        }),
-        UnitOrRandom::Unit(Unit {
-            id: "civ_fv_okean".into(),
-            name: "Okean-class Trawler".into(),
-            nation: "Civilian".into(),
-            utype: Ship,
-        }),
-        UnitOrRandom::Unit(Unit {
-            id: "civ_ms_kommunist".into(),
-            name: "Kommunist-class".into(),
-            nation: "Civilian".into(),
-            utype: Ship,
-        }),
-        // USSR
-        UnitOrRandom::Unit(Unit {
-            id: "wp_bpk_kresta2".into(),
-            name: "Kresta II-class".into(),
-            nation: "USSR".into(),
-            utype: Ship,
-        }),
-        UnitOrRandom::Unit(Unit {
-            id: "wp_bpk_udaloy".into(),
-            name: "Udaloy-class".into(),
-            nation: "USSR".into(),
-            utype: Ship,
-        }),
-        UnitOrRandom::Unit(Unit {
-            id: "wp_pkr_moskva".into(),
-            name: "Moskva-class".into(),
-            nation: "USSR".into(),
-            utype: Ship,
-        }),
-        UnitOrRandom::Unit(Unit {
-            id: "wp_rkr_kirov".into(),
-            name: "Kirov-class".into(),
-            nation: "USSR".into(),
-            utype: Ship,
-        }),
-        UnitOrRandom::Unit(Unit {
-            id: "wp_ss_kilo".into(),
-            name: "Kilo-class".into(),
-            nation: "USSR".into(),
-            utype: Submarine,
-        }),
-        // USA
-        UnitOrRandom::Unit(Unit {
-            id: "usn_ff_knox".into(),
-            name: "Knox-class".into(),
-            nation: "USA".into(),
-            utype: Ship,
-        }),
-        UnitOrRandom::Unit(Unit {
-            id: "usn_ff_garcia".into(),
-            name: "Garcia-class".into(),
-            nation: "USA".into(),
-            utype: Ship,
-        }),
-        UnitOrRandom::Unit(Unit {
-            id: "usn_cv_kitty_hawk".into(),
-            name: "Kitty Hawk-class".into(),
-            nation: "USA".into(),
-            utype: Ship,
-        }),
-        UnitOrRandom::Unit(Unit {
-            id: "usn_cg_leahy".into(),
-            name: "Leahy-class".into(),
-            nation: "USA".into(),
-            utype: Ship,
-        }),
     ]
+}
+
+fn units() -> Vec<UnitOrRandom> {
+    // FIXME: don't do this here
+    let unit_db = unit_db::UnitDb::new().unwrap();
+    let mut units = randoms();
+    units.extend(
+        unit_db
+            .all()
+            .into_iter()
+            .cloned()
+            .map(UnitOrRandom::Unit)
+    );
+    units
 }
 
 pub fn start() {

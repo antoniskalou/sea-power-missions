@@ -77,7 +77,6 @@ fn load_ini(path: &Path) -> Result<Ini, String> {
     Ok(config)
 }
 
-// TODO: can load unit names from language_en/vessel_names.ini
 fn load_nation_reference() -> Result<HashMap<String, String>, UnitDbError> {
     let config = load_ini(&dir::original_dir().join("language_en/nations.ini"))?;
 
