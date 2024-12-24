@@ -121,15 +121,13 @@ fn randoms() -> Vec<UnitOrRandom> {
 
 fn convert_units(units: &Vec<&Unit>) -> Vec<UnitOrRandom> {
     let mut all_units = randoms();
-    all_units.extend(
-        units.iter().map(|&unit| UnitOrRandom::Unit(unit.clone()))
-    );
+    all_units.extend(units.iter().map(|&unit| UnitOrRandom::Unit(unit.clone())));
     all_units
 }
 
 pub fn start<F>(available: &Vec<&Unit>, on_submit: F)
 where
-    F: Fn(MissionOptions) + Send + Sync + 'static
+    F: Fn(MissionOptions) + Send + Sync + 'static,
 {
     cursive::logger::init();
     // turn off internal cursive logging

@@ -137,11 +137,7 @@ impl UnitTreeSelection {
 }
 
 fn units_to_options(units: &Vec<UnitOrRandom>) -> Vec<UnitOption> {
-    units
-        .iter()
-        .cloned()
-        .map(|u| u.into())
-        .collect()
+    units.iter().cloned().map(|u| u.into()).collect()
 }
 
 /// A tree view that keeps track of units and associated formations.
