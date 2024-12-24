@@ -119,15 +119,15 @@ fn randoms() -> Vec<UnitOrRandom> {
     ]
 }
 
-fn units() -> Vec<UnitOrRandom> {
-    // FIXME: don't do this here
-    let unit_db = unit_db::UnitDb::new().unwrap();
-    let mut units = randoms();
-    units.extend(unit_db.all().into_iter().cloned().map(UnitOrRandom::Unit));
-    units
+fn convert_units(units: &Vec<&Unit>) -> Vec<UnitOrRandom> {
+    let mut all_units = randoms();
+    all_units.extend(
+        units.iter().map(|&unit| UnitOrRandom::Unit(unit.clone()))
+    );
+    all_units
 }
 
-pub fn start<F>(on_submit: F)
+pub fn start<F>(available: &Vec<&Unit>, on_submit: F)
 where
     F: Fn(MissionOptions) + Send + Sync + 'static
 {
@@ -135,6 +135,7 @@ where
     // turn off internal cursive logging
     cursive::logger::set_internal_filter_level(LevelFilter::Off);
 
+    let available = Arc::new(Mutex::new(convert_units(available)));
     let mission = Arc::new(Mutex::new(MissionOptions::default()));
 
     let mut siv = cursive::default();
@@ -159,12 +160,14 @@ where
         );
 
     let neutral_form = {
+        let available = available.clone();
         let mission = mission.clone();
         ListView::new().child(
             "Unit Groups",
             Button::new("Customise...", move |s| {
+                let available = available.lock().unwrap();
                 let view = customise_group_view(
-                    units(),
+                    available.clone(),
                     fill_taskforce(mission.clone(), |mission| &mut mission.neutral),
                 );
                 s.add_layer(view);
@@ -184,10 +187,12 @@ where
         .child(
             "Unit Groups",
             Button::new("Customise...", {
+                let available = available.clone();
                 let mission = mission.clone();
                 move |s| {
+                    let available = available.lock().unwrap();
                     let view = customise_group_view(
-                        units(),
+                        available.clone(),
                         fill_taskforce(mission.clone(), |mission| &mut mission.blue),
                     );
                     s.add_layer(view);
@@ -207,10 +212,12 @@ where
         .child(
             "Unit Groups",
             Button::new("Customise...", {
+                let available = available.clone();
                 let mission = mission.clone();
                 move |s| {
+                    let available = available.lock().unwrap();
                     let view = customise_group_view(
-                        units(),
+                        available.clone(),
                         fill_taskforce(mission.clone(), |mission| &mut mission.red),
                     );
                     s.add_layer(view);

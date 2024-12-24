@@ -19,8 +19,10 @@ fn load_template() -> Result<Ini, String> {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
+    let unit_db = UnitDb::new().expect("failed to initialise UnitDB");
+
     // TODO: consider using channels to send missions instead
-    gui::start(|options| {
+    gui::start(&unit_db.all(), |options| {
         let unit_db = UnitDb::new().expect("failed to initialise UnitBD");
         let mission = Mission::new(&unit_db, options);
         eprintln!("{:#?}", mission);
