@@ -92,7 +92,10 @@ fn load_nation_reference() -> Result<HashMap<String, Nation>, UnitDbError> {
             let id = nation.get("nationprefix").and_then(|o| (*o).clone());
             let name = nation.get("nationname").and_then(|o| (*o).clone());
             if let Some((id, name)) = id.zip(name) {
-                let nation = Nation { id: id.clone(), name, };
+                let nation = Nation {
+                    id: id.clone(),
+                    name,
+                };
                 nations.insert(id, nation);
             }
         }
@@ -122,7 +125,6 @@ fn load_vessel_names() -> Result<HashMap<String, String>, UnitDbError> {
 fn load_vessels(nations: &HashMap<String, Nation>) -> Result<HashMap<String, Unit>, UnitDbError> {
     let names = load_vessel_names()?;
     let mut vessels = HashMap::new();
-    eprintln!("{:#?}", nations);
     for entry in fs::read_dir(dir::vessel_dir())? {
         let entry = entry?;
         let path = entry.path();
@@ -145,7 +147,15 @@ fn load_vessels(nations: &HashMap<String, Nation>) -> Result<HashMap<String, Uni
                     .get("General", "UnitType")
                     .map(UnitType::from)
                     .unwrap_or(UnitType::Unknown);
-                vessels.insert(id.clone(), Unit { id, name, nation, utype });
+                vessels.insert(
+                    id.clone(),
+                    Unit {
+                        id,
+                        name,
+                        nation,
+                        utype,
+                    },
+                );
             }
         }
     }
@@ -204,7 +214,10 @@ impl UnitDb {
     }
 
     pub fn by_nation(&self, nation: &str) -> Vec<&Unit> {
-        self.units.values().filter(|v| v.nation.id == nation).collect()
+        self.units
+            .values()
+            .filter(|v| v.nation.id == nation)
+            .collect()
     }
 
     pub fn by_type(&self, utype: UnitType) -> Vec<&Unit> {

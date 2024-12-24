@@ -3,7 +3,7 @@ mod views;
 
 use std::sync::{Arc, Mutex};
 
-use crate::mission::{self, MissionOptions};
+use crate::mission::{self, MissionOptions, UnitOption};
 use crate::unit_db::{self, Unit, UnitType};
 
 use cursive::reexports::log::{info, LevelFilter};
@@ -60,11 +60,21 @@ impl UnitOrRandom {
     }
 }
 
+impl Into<UnitOption> for UnitOrRandom {
+    fn into(self) -> UnitOption {
+        match self {
+            UnitOrRandom::Unit(unit) => UnitOption::Unit(unit.id),
+            UnitOrRandom::Random { nation, utype } => UnitOption::Random { nation, utype },
+        }
+    }
+}
+
 // #[derive(Clone, Debug)]
 // struct MaybeUnit(UnitOrRandom);
 
 fn randoms() -> Vec<UnitOrRandom> {
     use UnitType::*;
+    // TODO: generate these based off nation + utype
     vec![
         UnitOrRandom::Random {
             nation: None,
@@ -113,13 +123,7 @@ fn units() -> Vec<UnitOrRandom> {
     // FIXME: don't do this here
     let unit_db = unit_db::UnitDb::new().unwrap();
     let mut units = randoms();
-    units.extend(
-        unit_db
-            .all()
-            .into_iter()
-            .cloned()
-            .map(UnitOrRandom::Unit)
-    );
+    units.extend(unit_db.all().into_iter().cloned().map(UnitOrRandom::Unit));
     units
 }
 
@@ -156,9 +160,13 @@ pub fn start() {
         ListView::new().child(
             "Unit Groups",
             Button::new("Customise...", move |s| {
-                let _mission = mission.clone();
+                let mission = mission.clone();
                 let view = customise_group_view(units(), move |s, selected| {
                     info!("selected cb: {:?}", selected);
+                    let mut mission = mission.lock().unwrap();
+                    mission.neutral.units = selected.unit_options();
+                    // mission.neutral.formations = selected.formations.into();
+                    info!("mission: {:?}", mission);
                     s.pop_layer();
                 });
                 s.add_layer(view);

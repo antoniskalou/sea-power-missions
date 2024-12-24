@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
-const ROOT_DIR: &str = "D:\\SteamLibrary\\steamapps\\common\\Sea Power";
-const MISSION_DIR: &str = "Sea Power_Data\\StreamingAssets\\user\\missions";
-const ORIGINAL_DIR: &str = "Sea Power_Data\\StreamingAssets\\original";
+const ROOT_DIR: &str = r"D:\SteamLibrary\steamapps\common\Sea Power";
+const MISSION_DIR: &str = r"Sea Power_Data\StreamingAssets\user\missions";
+const ORIGINAL_DIR: &str = r"Sea Power_Data\StreamingAssets\original";
 const AIRCRAFT_DIR: &str = "aircraft";
 const VESSEL_DIR: &str = "vessels";
 

@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use crate::mission::{FormationOption, UnitOption};
+
 use super::reusable_id::ReusableId;
 use super::UnitOrRandom;
 use cursive::align::HAlign;
@@ -111,6 +113,35 @@ pub struct UnitTreeSelection {
     pub units: Vec<UnitOrRandom>,
     pub formations: Vec<Vec<UnitOrRandom>>,
 }
+
+impl UnitTreeSelection {
+    pub fn unit_options(&self) -> Vec<UnitOption> {
+        self.units
+            .iter()
+            // FIXME: cloned shouldn't be required
+            .cloned()
+            .map(|u| u.into())
+            .collect()
+    }
+
+    // fn formation_options(&self) -> Vec<FormationOption> {
+    //     self.formations
+    //         .iter()
+    //         .cloned()
+    //         // FIXME: horrible
+    //         .map(|f| 
+    //         .collect()
+    // }
+}
+
+// impl Into<Vec<FormationOption>> for UnitTreeSelection {
+//     fn into(self) -> Vec<FormationOption> {
+//         self.formations
+//             .into_iter()
+//             .map(|u| u.into())
+//             .collect()
+//     }
+// }
 
 /// A tree view that keeps track of units and associated formations.
 pub struct UnitTree {
