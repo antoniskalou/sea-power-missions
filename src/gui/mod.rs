@@ -1,9 +1,10 @@
 mod reusable_id;
+mod util;
 mod views;
 
 use std::sync::{Arc, Mutex};
 
-use crate::mission::{self, MissionOptions, UnitOption};
+use crate::mission::{self, MissionOptions, TaskforceOptions, UnitOption};
 use crate::unit_db::{self, Unit, UnitType};
 
 use cursive::reexports::log::{info, LevelFilter};
@@ -160,15 +161,10 @@ pub fn start() {
         ListView::new().child(
             "Unit Groups",
             Button::new("Customise...", move |s| {
-                let mission = mission.clone();
-                let view = customise_group_view(units(), move |s, selected| {
-                    info!("selected cb: {:?}", selected);
-                    let mut mission = mission.lock().unwrap();
-                    mission.neutral.units = selected.unit_options();
-                    // mission.neutral.formations = selected.formations.into();
-                    info!("mission: {:?}", mission);
-                    s.pop_layer();
-                });
+                let view = customise_group_view(
+                    units(),
+                    fill_taskforce(mission.clone(), |mission| &mut mission.neutral),
+                );
                 s.add_layer(view);
             }),
         )
@@ -185,11 +181,15 @@ pub fn start() {
         )
         .child(
             "Unit Groups",
-            Button::new("Customise...", |s| {
-                let view = customise_group_view(units(), |s, _| {
-                    s.pop_layer();
-                });
-                s.add_layer(view);
+            Button::new("Customise...", {
+                let mission = mission.clone();
+                move |s| {
+                    let view = customise_group_view(
+                        units(),
+                        fill_taskforce(mission.clone(), |mission| &mut mission.blue),
+                    );
+                    s.add_layer(view);
+                }
             }),
         );
 
@@ -204,11 +204,15 @@ pub fn start() {
         )
         .child(
             "Unit Groups",
-            Button::new("Customise...", |s| {
-                let view = customise_group_view(units(), |s, _| {
-                    s.pop_layer();
-                });
-                s.add_layer(view);
+            Button::new("Customise...", {
+                let mission = mission.clone();
+                move |s| {
+                    let view = customise_group_view(
+                        units(),
+                        fill_taskforce(mission.clone(), |mission| &mut mission.red),
+                    );
+                    s.add_layer(view);
+                }
             }),
         );
 
@@ -376,4 +380,19 @@ where
         )
         .scrollable()
         .full_screen()
+}
+
+fn fill_taskforce<F>(
+    mission: Arc<Mutex<MissionOptions>>,
+    fetcher: F,
+) -> impl Fn(&mut Cursive, views::UnitTreeSelection) + Send + Sync
+where
+    F: Fn(&mut MissionOptions) -> &mut TaskforceOptions + Send + Sync,
+{
+    move |s, selected: views::UnitTreeSelection| {
+        let mut mission = mission.lock().unwrap();
+        let taskforce = fetcher(&mut mission);
+        selected.fill_taskforce(taskforce);
+        s.pop_layer();
+    }
 }

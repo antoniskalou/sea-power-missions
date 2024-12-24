@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::mission::{FormationOption, UnitOption};
+use crate::mission::{FormationOption, TaskforceOptions, UnitOption};
 
 use super::reusable_id::ReusableId;
 use super::UnitOrRandom;
@@ -107,6 +107,7 @@ impl std::fmt::Display for UnitTreeItem {
     }
 }
 
+/// All selected items from the `UnitTree`.
 // TODO: consider removing
 #[derive(Debug)]
 pub struct UnitTreeSelection {
@@ -115,33 +116,33 @@ pub struct UnitTreeSelection {
 }
 
 impl UnitTreeSelection {
-    pub fn unit_options(&self) -> Vec<UnitOption> {
-        self.units
-            .iter()
-            // FIXME: cloned shouldn't be required
-            .cloned()
-            .map(|u| u.into())
-            .collect()
+    /// Fill taskforce units and formations with the selections.
+    pub fn fill_taskforce(&self, taskforce: &mut TaskforceOptions) {
+        taskforce.units = self.unit_options();
+        taskforce.formations = self.formation_options();
     }
 
-    // fn formation_options(&self) -> Vec<FormationOption> {
-    //     self.formations
-    //         .iter()
-    //         .cloned()
-    //         // FIXME: horrible
-    //         .map(|f| 
-    //         .collect()
-    // }
+    fn unit_options(&self) -> Vec<UnitOption> {
+        units_to_options(&self.units)
+    }
+
+    fn formation_options(&self) -> Vec<FormationOption> {
+        self.formations
+            .iter()
+            .map(|f| FormationOption {
+                units: units_to_options(&f),
+            })
+            .collect()
+    }
 }
 
-// impl Into<Vec<FormationOption>> for UnitTreeSelection {
-//     fn into(self) -> Vec<FormationOption> {
-//         self.formations
-//             .into_iter()
-//             .map(|u| u.into())
-//             .collect()
-//     }
-// }
+fn units_to_options(units: &Vec<UnitOrRandom>) -> Vec<UnitOption> {
+    units
+        .iter()
+        .cloned()
+        .map(|u| u.into())
+        .collect()
+}
 
 /// A tree view that keeps track of units and associated formations.
 pub struct UnitTree {
