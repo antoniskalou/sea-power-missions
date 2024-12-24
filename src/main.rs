@@ -8,7 +8,7 @@ use configparser::ini::Ini;
 use mission::Mission;
 use std::error::Error;
 use std::str;
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::Arc;
 use unit_db::UnitDb;
 
 const MISSION_TEMPLATE: &str = include_str!("../resources/mission_template.ini");
@@ -22,16 +22,15 @@ fn load_template() -> Result<Ini, String> {
 fn main() -> Result<(), Box<dyn Error>> {
     let unit_db = Arc::new(UnitDb::new().expect("failed to initialise UnitDB"));
 
-    // TODO: consider using channels to send missions instead
     gui::start(&unit_db.all(), {
         let unit_db = unit_db.clone();
         move |options| {
-            let mission = Mission::new(&unit_db, options);
+            let mission = Mission::new(&unit_db.clone(), options);
             eprintln!("{:#?}", mission);
 
+            // FIXME: give for useful errors to user
             let mut config = load_template().expect("load template failed");
             mission.write_ini(&mut config);
-            eprintln!("========== TEMPLATE ==========\n{}", config.writes());
 
             let mission_path = dir::mission_dir().join("Random Mission.ini");
             config.write(mission_path).expect("config write failed");

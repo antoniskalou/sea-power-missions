@@ -231,8 +231,9 @@ where
                 move |s| {
                     let mut mission = mission.lock().unwrap();
                     fill_mission(s, &mut mission);
-                    info!("{:?}", mission);
                     on_submit(mission.clone());
+                    // TODO: show more useful info
+                    s.add_layer(Dialog::info("Mission generated!"));
                 }
             })
             .button("Quit", Cursive::quit)
