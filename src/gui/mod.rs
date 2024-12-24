@@ -1,5 +1,4 @@
 mod reusable_id;
-mod util;
 mod views;
 
 use std::sync::{Arc, Mutex};
@@ -128,7 +127,10 @@ fn units() -> Vec<UnitOrRandom> {
     units
 }
 
-pub fn start() {
+pub fn start<F>(on_submit: F)
+where
+    F: Fn(MissionOptions) + Send + Sync + 'static
+{
     cursive::logger::init();
     // turn off internal cursive logging
     cursive::logger::set_internal_filter_level(LevelFilter::Off);
@@ -222,8 +224,10 @@ pub fn start() {
             .button("Generate", {
                 let mission = mission.clone();
                 move |s| {
-                    let mission = mission.lock().unwrap();
-                    generate_mission(s, mission.clone());
+                    let mut mission = mission.lock().unwrap();
+                    fill_mission(s, &mut mission);
+                    info!("{:?}", mission);
+                    on_submit(mission.clone());
                 }
             })
             .button("Quit", Cursive::quit)
@@ -239,7 +243,7 @@ pub fn start() {
     siv.run();
 }
 
-fn generate_mission(s: &mut Cursive, mut mission: MissionOptions) {
+fn fill_mission(s: &mut Cursive, mission: &mut MissionOptions) {
     let lat = s
         .call_on_name("latitude", |view: &mut EditView| view.get_content())
         .unwrap();
@@ -259,8 +263,21 @@ fn generate_mission(s: &mut Cursive, mut mission: MissionOptions) {
     let size = (width.parse().unwrap(), height.parse().unwrap());
 
     mission.general = mission::GeneralOptions { latlon, size };
+}
 
-    info!("{:?}", mission);
+fn fill_taskforce<F>(
+    mission: Arc<Mutex<MissionOptions>>,
+    fetcher: F,
+) -> impl Fn(&mut Cursive, views::UnitTreeSelection) + Send + Sync
+where
+    F: Fn(&mut MissionOptions) -> &mut TaskforceOptions + Send + Sync,
+{
+    move |s, selected: views::UnitTreeSelection| {
+        let mut mission = mission.lock().unwrap();
+        let taskforce = fetcher(&mut mission);
+        selected.fill_taskforce(taskforce);
+        s.pop_layer();
+    }
 }
 
 fn customise_group_view<F>(available: Vec<UnitOrRandom>, on_submit: F) -> impl View
@@ -380,19 +397,4 @@ where
         )
         .scrollable()
         .full_screen()
-}
-
-fn fill_taskforce<F>(
-    mission: Arc<Mutex<MissionOptions>>,
-    fetcher: F,
-) -> impl Fn(&mut Cursive, views::UnitTreeSelection) + Send + Sync
-where
-    F: Fn(&mut MissionOptions) -> &mut TaskforceOptions + Send + Sync,
-{
-    move |s, selected: views::UnitTreeSelection| {
-        let mut mission = mission.lock().unwrap();
-        let taskforce = fetcher(&mut mission);
-        selected.fill_taskforce(taskforce);
-        s.pop_layer();
-    }
 }
