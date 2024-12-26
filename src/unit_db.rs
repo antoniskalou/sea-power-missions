@@ -181,10 +181,18 @@ fn load_aircraft() -> Result<HashMap<String, Unit>, UnitDbError> {
     Ok(HashMap::new())
 }
 
-#[derive(Debug)]
 pub enum UnitDbError {
     IOError(io::Error),
     ParseError(String),
+}
+
+impl std::fmt::Debug for UnitDbError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UnitDbError::IOError(err) => write!(f, "IOError: {}", err),
+            UnitDbError::ParseError(err) => write!(f, "ParseError: {}", err),
+        }
+    }
 }
 
 impl From<io::Error> for UnitDbError {

@@ -16,8 +16,6 @@ use cursive::Cursive;
 
 use views::{UnitTable, UnitTree};
 
-const NATIONS: [&str; 5] = ["Civilian", "Soviet", "China", "Iran", "US"];
-
 #[derive(Clone, Debug)]
 pub enum UnitOrRandom {
     Unit(Unit),
