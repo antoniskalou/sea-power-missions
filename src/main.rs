@@ -22,7 +22,7 @@ fn load_template() -> Result<Ini, String> {
 fn main() -> Result<(), Box<dyn Error>> {
     let unit_db = Arc::new(UnitDb::new().expect("failed to initialise UnitDB"));
 
-    gui::start(&unit_db.all(), {
+    gui::App::new(&unit_db).run({
         let unit_db = unit_db.clone();
         move |options| {
             let mission = Mission::new(&unit_db.clone(), options);

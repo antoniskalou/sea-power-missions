@@ -4,7 +4,7 @@ mod views;
 use std::sync::{Arc, Mutex};
 
 use crate::mission::{self, MissionOptions, TaskforceOptions, UnitOption};
-use crate::unit_db::{self, Unit, UnitType};
+use crate::unit_db::{Nation, Unit, UnitDb, UnitType};
 
 use cursive::reexports::log::{info, LevelFilter};
 use cursive::traits::*;
@@ -119,27 +119,44 @@ fn randoms() -> Vec<UnitOrRandom> {
     ]
 }
 
-fn convert_units(units: &Vec<&Unit>) -> Vec<UnitOrRandom> {
-    let mut all_units = randoms();
-    all_units.extend(units.iter().map(|&unit| UnitOrRandom::Unit(unit.clone())));
-    all_units
+pub struct App {
+    all_units: Vec<Unit>,
+    nations: Vec<Nation>,
 }
 
-pub fn start<F>(available: &Vec<&Unit>, on_submit: F)
+impl App {
+    pub fn new(unit_db: &UnitDb) -> Self {
+        Self {
+            all_units: unit_db.all().into_iter().cloned().collect(),
+            nations: unit_db.nations().into_iter().cloned().collect(),
+        }
+    }
+
+    pub fn run<F>(self, on_submit: F)
+    where
+        F: Fn(MissionOptions) + Send + Sync + 'static,
+    {
+        cursive::logger::init();
+        // turn off internal cursive logging
+        cursive::logger::set_internal_filter_level(LevelFilter::Off);
+
+        let mut siv = cursive::default();
+        siv.set_window_title("Sea Power Mission Generator");
+        siv.add_global_callback('q', Cursive::quit);
+        siv.add_global_callback('`', Cursive::toggle_debug_console);
+
+        siv.add_layer(main_view(self, on_submit));
+        siv.run();
+    }
+}
+
+fn main_view<F>(state: App, on_submit: F) -> impl View
 where
     F: Fn(MissionOptions) + Send + Sync + 'static,
 {
-    cursive::logger::init();
-    // turn off internal cursive logging
-    cursive::logger::set_internal_filter_level(LevelFilter::Off);
-
-    let available = Arc::new(Mutex::new(convert_units(available)));
+    let available = Arc::new(convert_units(&state.all_units));
+    let nations = Arc::new(state.nations);
     let mission = Arc::new(Mutex::new(MissionOptions::default()));
-
-    let mut siv = cursive::default();
-    siv.set_window_title("Sea Power Mission Generator");
-    siv.add_global_callback('q', Cursive::quit);
-    siv.add_global_callback('`', Cursive::toggle_debug_console);
 
     let general_form = ListView::new()
         .child(
@@ -159,13 +176,14 @@ where
 
     let neutral_form = {
         let available = available.clone();
+        let nations = nations.clone();
         let mission = mission.clone();
         ListView::new().child(
             "Unit Groups",
             Button::new("Customise...", move |s| {
-                let available = available.lock().unwrap();
                 let view = customise_group_view(
-                    available.clone(),
+                    &available.clone(),
+                    &nations.clone(),
                     fill_taskforce(mission.clone(), |mission| &mut mission.neutral),
                 );
                 s.add_layer(view);
@@ -186,11 +204,12 @@ where
             "Unit Groups",
             Button::new("Customise...", {
                 let available = available.clone();
+                let nations = nations.clone();
                 let mission = mission.clone();
                 move |s| {
-                    let available = available.lock().unwrap();
                     let view = customise_group_view(
-                        available.clone(),
+                        &available.clone(),
+                        &nations.clone(),
                         fill_taskforce(mission.clone(), |mission| &mut mission.blue),
                     );
                     s.add_layer(view);
@@ -211,11 +230,12 @@ where
             "Unit Groups",
             Button::new("Customise...", {
                 let available = available.clone();
+                let nations = nations.clone();
                 let mission = mission.clone();
                 move |s| {
-                    let available = available.lock().unwrap();
                     let view = customise_group_view(
-                        available.clone(),
+                        &available.clone(),
+                        &nations.clone(),
                         fill_taskforce(mission.clone(), |mission| &mut mission.red),
                     );
                     s.add_layer(view);
@@ -223,70 +243,33 @@ where
             }),
         );
 
-    siv.add_layer(
-        Dialog::new()
-            .title("Create Mission")
-            .button("Generate", {
-                let mission = mission.clone();
-                move |s| {
-                    let mut mission = mission.lock().unwrap();
-                    fill_mission(s, &mut mission);
-                    on_submit(mission.clone());
-                    // TODO: show more useful info
-                    s.add_layer(Dialog::info("Mission generated!"));
-                }
-            })
-            .button("Quit", Cursive::quit)
-            .content(
-                LinearLayout::vertical()
-                    .child(Panel::new(general_form).title("General"))
-                    .child(Panel::new(neutral_form).title("Neutral"))
-                    .child(Panel::new(blue_form).title("Blue"))
-                    .child(Panel::new(red_form).title("Red")),
-            ),
-    );
-
-    siv.run();
+    Dialog::new()
+        .title("Create Mission")
+        .button("Generate", {
+            let mission = mission.clone();
+            move |s| {
+                let mut mission = mission.lock().unwrap();
+                fill_mission(s, &mut mission);
+                on_submit(mission.clone());
+                // TODO: show more useful info
+                s.add_layer(Dialog::info("Mission generated!"));
+            }
+        })
+        .button("Quit", Cursive::quit)
+        .content(
+            LinearLayout::vertical()
+                .child(Panel::new(general_form).title("General"))
+                .child(Panel::new(neutral_form).title("Neutral"))
+                .child(Panel::new(blue_form).title("Blue"))
+                .child(Panel::new(red_form).title("Red")),
+        )
 }
 
-fn fill_mission(s: &mut Cursive, mission: &mut MissionOptions) {
-    let lat = s
-        .call_on_name("latitude", |view: &mut EditView| view.get_content())
-        .unwrap();
-    let lon = s
-        .call_on_name("longitude", |view: &mut EditView| view.get_content())
-        .unwrap();
-    // fixme: unwrap
-    let latlon = (lat.parse().unwrap(), lon.parse().unwrap());
-
-    let width = s
-        .call_on_name("size_w", |view: &mut EditView| view.get_content())
-        .unwrap();
-    let height = s
-        .call_on_name("size_h", |view: &mut EditView| view.get_content())
-        .unwrap();
-    // fixme: unwrap
-    let size = (width.parse().unwrap(), height.parse().unwrap());
-
-    mission.general = mission::GeneralOptions { latlon, size };
-}
-
-fn fill_taskforce<F>(
-    mission: Arc<Mutex<MissionOptions>>,
-    fetcher: F,
-) -> impl Fn(&mut Cursive, views::UnitTreeSelection) + Send + Sync
-where
-    F: Fn(&mut MissionOptions) -> &mut TaskforceOptions + Send + Sync,
-{
-    move |s, selected: views::UnitTreeSelection| {
-        let mut mission = mission.lock().unwrap();
-        let taskforce = fetcher(&mut mission);
-        selected.fill_taskforce(taskforce);
-        s.pop_layer();
-    }
-}
-
-fn customise_group_view<F>(available: Vec<UnitOrRandom>, on_submit: F) -> impl View
+fn customise_group_view<F>(
+    available: &Vec<UnitOrRandom>,
+    nations: &Vec<Nation>,
+    on_submit: F
+) -> impl View
 where
     F: Fn(&mut Cursive, views::UnitTreeSelection) + Send + Sync + 'static,
 {
@@ -338,7 +321,7 @@ where
                 SelectView::new()
                     .popup()
                     .item_str("<ALL>")
-                    .with_all_str(NATIONS)
+                    .with_all_str(nations)
                     .on_submit(filter)
                     .with_name("filter_nation")
                     .max_width(20),
@@ -367,7 +350,7 @@ where
     .title("Filters");
 
     let available_panel = Panel::new(
-        UnitTable::new(available)
+        UnitTable::new(available.clone())
             .on_submit(add_selected)
             .with_name("available"),
     )
@@ -403,4 +386,48 @@ where
         )
         .scrollable()
         .full_screen()
+}
+
+fn convert_units(units: &Vec<Unit>) -> Vec<UnitOrRandom> {
+    let mut all_units = randoms();
+    all_units.extend(units.iter().map(|unit| UnitOrRandom::Unit(unit.clone())));
+    all_units
+}
+
+
+fn fill_mission(s: &mut Cursive, mission: &mut MissionOptions) {
+    let lat = s
+        .call_on_name("latitude", |view: &mut EditView| view.get_content())
+        .unwrap();
+    let lon = s
+        .call_on_name("longitude", |view: &mut EditView| view.get_content())
+        .unwrap();
+    // fixme: unwrap
+    let latlon = (lat.parse().unwrap(), lon.parse().unwrap());
+
+    let width = s
+        .call_on_name("size_w", |view: &mut EditView| view.get_content())
+        .unwrap();
+    let height = s
+        .call_on_name("size_h", |view: &mut EditView| view.get_content())
+        .unwrap();
+    // fixme: unwrap
+    let size = (width.parse().unwrap(), height.parse().unwrap());
+
+    mission.general = mission::GeneralOptions { latlon, size };
+}
+
+fn fill_taskforce<F>(
+    mission: Arc<Mutex<MissionOptions>>,
+    fetcher: F,
+) -> impl Fn(&mut Cursive, views::UnitTreeSelection) + Send + Sync
+where
+    F: Fn(&mut MissionOptions) -> &mut TaskforceOptions + Send + Sync,
+{
+    move |s, selected: views::UnitTreeSelection| {
+        let mut mission = mission.lock().unwrap();
+        let taskforce = fetcher(&mut mission);
+        selected.fill_taskforce(taskforce);
+        s.pop_layer();
+    }
 }

@@ -60,6 +60,21 @@ pub struct Nation {
     pub name: String,
 }
 
+impl std::fmt::Display for Nation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // TODO: merge related nations so as not to need to do this
+        write!(f, "{} ({})", self.name, self.id.to_uppercase())
+    }
+}
+
+// normally this wouldn't be required, since std::fmt::Display covers that use-case,
+// but cursive_tree_view insists of needing this
+impl Into<String> for &Nation {
+    fn into(self) -> String {
+        self.to_string()
+    }
+}
+
 pub type UnitId = String;
 
 #[derive(Clone, Debug)]
@@ -202,7 +217,9 @@ impl UnitDb {
     }
 
     pub fn nations(&self) -> Vec<&Nation> {
-        self.nations.values().collect()
+        let mut nations: Vec<&Nation> = self.nations.values().collect();
+        nations.sort_by(|a, b| a.id.cmp(&b.id));
+        nations
     }
 
     pub fn all(&self) -> Vec<&Unit> {
