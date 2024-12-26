@@ -71,17 +71,22 @@ impl From<UnitOrRandom> for UnitOption {
 // #[derive(Clone, Debug)]
 // struct MaybeUnit(UnitOrRandom);
 
-pub struct App {
+struct AppState {
     all_units: Vec<Unit>,
     nations: Vec<Nation>,
 }
 
+pub struct App {
+    state: AppState,
+}
+
 impl App {
     pub fn new(unit_db: &UnitDb) -> Self {
-        Self {
+        let state = AppState {
             all_units: unit_db.all().into_iter().cloned().collect(),
             nations: unit_db.nations().into_iter().cloned().collect(),
-        }
+        };
+        Self { state }
     }
 
     pub fn run<F>(self, on_submit: F)
@@ -96,12 +101,12 @@ impl App {
         siv.set_window_title("Sea Power Mission Generator");
         siv.add_global_callback('`', Cursive::toggle_debug_console);
 
-        siv.add_layer(main_view(self, on_submit));
+        siv.add_layer(main_view(self.state, on_submit));
         siv.run();
     }
 }
 
-fn main_view<F>(state: App, on_submit: F) -> impl View
+fn main_view<F>(state: AppState, on_submit: F) -> impl View
 where
     F: Fn(MissionOptions) + Send + Sync + 'static,
 {
