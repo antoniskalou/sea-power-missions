@@ -2,6 +2,7 @@ mod reusable_id;
 mod views;
 
 use std::sync::{Arc, Mutex};
+use itertools::iproduct;
 
 use crate::mission::{self, MissionOptions, TaskforceOptions, UnitOption};
 use crate::unit_db::{Nation, Unit, UnitDb, UnitType};
@@ -70,53 +71,6 @@ impl From<UnitOrRandom> for UnitOption {
 // #[derive(Clone, Debug)]
 // struct MaybeUnit(UnitOrRandom);
 
-fn randoms() -> Vec<UnitOrRandom> {
-    use UnitType::*;
-    // TODO: generate these based off nation + utype
-    vec![
-        UnitOrRandom::Random {
-            nation: None,
-            utype: None,
-        },
-        UnitOrRandom::Random {
-            nation: Some("Soviet".into()),
-            utype: None,
-        },
-        UnitOrRandom::Random {
-            nation: Some("Soviet".into()),
-            utype: Some(Ship),
-        },
-        UnitOrRandom::Random {
-            nation: Some("Soviet".into()),
-            utype: Some(Submarine),
-        },
-        UnitOrRandom::Random {
-            nation: Some("US".into()),
-            utype: None,
-        },
-        UnitOrRandom::Random {
-            nation: Some("US".into()),
-            utype: Some(Ship),
-        },
-        UnitOrRandom::Random {
-            nation: Some("US".into()),
-            utype: Some(Submarine),
-        },
-        UnitOrRandom::Random {
-            nation: Some("China".into()),
-            utype: None,
-        },
-        UnitOrRandom::Random {
-            nation: Some("China".into()),
-            utype: Some(Ship),
-        },
-        UnitOrRandom::Random {
-            nation: Some("China".into()),
-            utype: Some(Submarine),
-        },
-    ]
-}
-
 pub struct App {
     all_units: Vec<Unit>,
     nations: Vec<Nation>,
@@ -151,7 +105,7 @@ fn main_view<F>(state: App, on_submit: F) -> impl View
 where
     F: Fn(MissionOptions) + Send + Sync + 'static,
 {
-    let available = Arc::new(convert_units(&state.all_units));
+    let available = Arc::new(convert_units(&state.all_units, &state.nations));
     let nations = Arc::new(state.nations);
     let mission = Arc::new(Mutex::new(MissionOptions::default()));
 
@@ -382,12 +336,24 @@ where
         .full_screen()
 }
 
-fn convert_units(units: &[Unit]) -> Vec<UnitOrRandom> {
-    let mut all_units = randoms();
+fn randoms(nations: &[Nation]) -> Vec<UnitOrRandom> {
+    let types = UnitType::all();
+    iproduct!(
+        nations.iter().map(Some).chain(std::iter::once(None)),
+        types.iter().map(Some).chain(std::iter::once(None))
+    )
+    .map(|(nation, utype)| UnitOrRandom::Random {
+        nation: nation.cloned().map(|n| n.name.into()),
+        utype: utype.copied(),
+    })
+    .collect::<Vec<_>>()
+}
+
+fn convert_units(units: &[Unit], nations: &[Nation]) -> Vec<UnitOrRandom> {
+    let mut all_units = randoms(nations);
     all_units.extend(units.iter().map(|unit| UnitOrRandom::Unit(unit.clone())));
     all_units
 }
-
 
 fn fill_mission(s: &mut Cursive, mission: &mut MissionOptions) {
     let lat = s

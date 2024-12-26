@@ -16,6 +16,11 @@ pub enum UnitType {
 }
 
 impl UnitType {
+    pub fn all() -> Vec<Self> {
+        use UnitType::*;
+        vec![Ship, Submarine, Helicopter, FixedWing]
+    }
+
     pub fn capitalised_singular(&self) -> String {
         let str = match self {
             Self::Ship => "Vessel",
