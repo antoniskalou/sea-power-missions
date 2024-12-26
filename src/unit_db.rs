@@ -62,8 +62,9 @@ pub struct Nation {
 
 impl std::fmt::Display for Nation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // TODO: merge related nations so as not to need to do this
-        write!(f, "{} ({})", self.name, self.id.to_uppercase())
+        // FIXME: it would be nice to provide a {name} ({id}), but I can't since it breaks
+        // filter. Code from filter should not depend on the string intepretation.
+        write!(f, "{}", self.name)
     }
 }
 
