@@ -71,6 +71,7 @@ impl From<UnitOrRandom> for UnitOption {
 // #[derive(Clone, Debug)]
 // struct MaybeUnit(UnitOrRandom);
 
+#[derive(Debug)]
 struct AppState {
     all_units: Vec<Unit>,
     nations: Vec<Nation>,
@@ -342,6 +343,7 @@ where
         .full_screen()
 }
 
+// Generate all permutations of UnitOrRandom::Random that we could possibly have.
 fn randoms(nations: &[Nation]) -> Vec<UnitOrRandom> {
     let types = UnitType::all();
     iproduct!(
@@ -355,6 +357,7 @@ fn randoms(nations: &[Nation]) -> Vec<UnitOrRandom> {
     .collect::<Vec<_>>()
 }
 
+// Fill mission options based off what is currently in the UI.
 fn fill_mission(s: &mut Cursive, mission: &mut MissionOptions) {
     let lat = s
         .call_on_name("latitude", |view: &mut EditView| view.get_content())
@@ -377,6 +380,7 @@ fn fill_mission(s: &mut Cursive, mission: &mut MissionOptions) {
     mission.general = mission::GeneralOptions { latlon, size };
 }
 
+// Fill taskforce options based off what was selected by in the UI.
 fn fill_taskforce<F>(
     mission: Arc<Mutex<MissionOptions>>,
     fetcher: F,
