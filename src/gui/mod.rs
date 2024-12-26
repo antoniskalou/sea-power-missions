@@ -76,6 +76,14 @@ struct AppState {
     nations: Vec<Nation>,
 }
 
+impl AppState {
+    fn units_with_random(&self) -> Vec<UnitOrRandom> {
+        let mut all_units = randoms(&self.nations);
+        all_units.extend(self.all_units.iter().map(|unit| UnitOrRandom::Unit(unit.clone())));
+        all_units
+    }
+}
+
 pub struct App {
     state: AppState,
 }
@@ -110,8 +118,7 @@ fn main_view<F>(state: AppState, on_submit: F) -> impl View
 where
     F: Fn(MissionOptions) + Send + Sync + 'static,
 {
-    let available = Arc::new(convert_units(&state.all_units, &state.nations));
-    let nations = Arc::new(state.nations);
+    let state = Arc::new(state);
     let mission = Arc::new(Mutex::new(MissionOptions::default()));
 
     let general_form = ListView::new()
@@ -131,18 +138,18 @@ where
         );
 
     let neutral_form = {
-        let available = available.clone();
-        let nations = nations.clone();
         let mission = mission.clone();
         ListView::new().child(
             "Unit Groups",
-            Button::new("Customise...", move |s| {
-                let view = customise_group_view(
-                    &available.clone(),
-                    &nations.clone(),
-                    fill_taskforce(mission.clone(), |mission| &mut mission.neutral),
-                );
-                s.add_layer(view);
+            Button::new("Customise...", {
+                let state = state.clone();
+                move |s| {
+                    let view = customise_group_view(
+                        &state,
+                        fill_taskforce(mission.clone(), |mission| &mut mission.neutral),
+                    );
+                    s.add_layer(view);
+                }
             }),
         )
     };
@@ -153,18 +160,16 @@ where
             SelectView::new()
                 .popup()
                 // FIXME: remove civilian from selection
-                .with_all_str(nations.iter())
+                .with_all_str(state.nations.iter())
         )
         .child(
             "Unit Groups",
             Button::new("Customise...", {
-                let available = available.clone();
-                let nations = nations.clone();
+                let state = state.clone();
                 let mission = mission.clone();
                 move |s| {
                     let view = customise_group_view(
-                        &available.clone(),
-                        &nations.clone(),
+                        &state,
                         fill_taskforce(mission.clone(), |mission| &mut mission.blue),
                     );
                     s.add_layer(view);
@@ -177,18 +182,16 @@ where
             "Nation",
             SelectView::new()
                 .popup()
-                .with_all_str(nations.iter())
+                .with_all_str(state.nations.iter())
         )
         .child(
             "Unit Groups",
             Button::new("Customise...", {
-                let available = available.clone();
-                let nations = nations.clone();
                 let mission = mission.clone();
+                let state = state.clone();
                 move |s| {
                     let view = customise_group_view(
-                        &available.clone(),
-                        &nations.clone(),
+                        &state,
                         fill_taskforce(mission.clone(), |mission| &mut mission.red),
                     );
                     s.add_layer(view);
@@ -218,11 +221,7 @@ where
         )
 }
 
-fn customise_group_view<F>(
-    available: &[UnitOrRandom],
-    nations: &Vec<Nation>,
-    on_submit: F
-) -> impl View
+fn customise_group_view<F>(state: &AppState, on_submit: F) -> impl View
 where
     F: Fn(&mut Cursive, views::UnitTreeSelection) + Send + Sync + 'static,
 {
@@ -274,7 +273,7 @@ where
                 SelectView::new()
                     .popup()
                     .item_str("<ALL>")
-                    .with_all_str(nations)
+                    .with_all_str(&state.nations)
                     .on_submit(filter)
                     .with_name("filter_nation")
                     .max_width(20),
@@ -303,7 +302,7 @@ where
     .title("Filters");
 
     let available_panel = Panel::new(
-        UnitTable::new(available.to_owned())
+        UnitTable::new(state.units_with_random())
             .on_submit(add_selected)
             .with_name("available"),
     )
@@ -352,12 +351,6 @@ fn randoms(nations: &[Nation]) -> Vec<UnitOrRandom> {
         utype: utype.copied(),
     })
     .collect::<Vec<_>>()
-}
-
-fn convert_units(units: &[Unit], nations: &[Nation]) -> Vec<UnitOrRandom> {
-    let mut all_units = randoms(nations);
-    all_units.extend(units.iter().map(|unit| UnitOrRandom::Unit(unit.clone())));
-    all_units
 }
 
 fn fill_mission(s: &mut Cursive, mission: &mut MissionOptions) {
