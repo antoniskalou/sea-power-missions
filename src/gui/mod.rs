@@ -1,8 +1,8 @@
 mod reusable_id;
 mod views;
 
-use std::sync::{Arc, Mutex};
 use itertools::iproduct;
+use std::sync::{Arc, Mutex};
 
 use crate::mission::{self, MissionOptions, TaskforceOptions, UnitOption};
 use crate::unit_db::{Nation, Unit, UnitDb, UnitType};
@@ -79,7 +79,11 @@ struct AppState {
 impl AppState {
     fn units_with_random(&self) -> Vec<UnitOrRandom> {
         let mut all_units = randoms(&self.nations);
-        all_units.extend(self.all_units.iter().map(|unit| UnitOrRandom::Unit(unit.clone())));
+        all_units.extend(
+            self.all_units
+                .iter()
+                .map(|unit| UnitOrRandom::Unit(unit.clone())),
+        );
         all_units
     }
 }
@@ -160,7 +164,7 @@ where
             SelectView::new()
                 .popup()
                 // FIXME: remove civilian from selection
-                .with_all_str(state.nations.iter())
+                .with_all_str(state.nations.iter()),
         )
         .child(
             "Unit Groups",
@@ -180,9 +184,7 @@ where
     let red_form = ListView::new()
         .child(
             "Nation",
-            SelectView::new()
-                .popup()
-                .with_all_str(state.nations.iter())
+            SelectView::new().popup().with_all_str(state.nations.iter()),
         )
         .child(
             "Unit Groups",
@@ -347,7 +349,7 @@ fn randoms(nations: &[Nation]) -> Vec<UnitOrRandom> {
         types.iter().map(Some).chain(std::iter::once(None))
     )
     .map(|(nation, utype)| UnitOrRandom::Random {
-        nation: nation.cloned().map(|n| n.name.into()),
+        nation: nation.cloned().map(|n| n.name),
         utype: utype.copied(),
     })
     .collect::<Vec<_>>()

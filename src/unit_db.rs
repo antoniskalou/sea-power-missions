@@ -152,7 +152,7 @@ fn load_vessels(nations: &HashMap<String, Nation>) -> Result<HashMap<String, Uni
         let id = match path_to_id(&path) {
             // skip storing variants for now, TODO
             Some(id) if !id.ends_with("_variants") => id.to_string(),
-            _ => continue // skip invalid or variant ID's
+            _ => continue, // skip invalid or variant ID's
         };
 
         let (nation_id, _) = match id.split_once("_") {
@@ -164,7 +164,7 @@ fn load_vessels(nations: &HashMap<String, Nation>) -> Result<HashMap<String, Uni
         // probably not important enough to include.
         let name = match names.get(&id) {
             Some(id) => id.to_string(),
-            _ => continue
+            _ => continue,
         };
 
         let nation = match nations.get(nation_id) {
@@ -178,7 +178,15 @@ fn load_vessels(nations: &HashMap<String, Nation>) -> Result<HashMap<String, Uni
             .map(UnitType::from)
             .unwrap_or(UnitType::Unknown);
 
-        vessels.insert(id.clone(), Unit {id, name, nation, utype, });
+        vessels.insert(
+            id.clone(),
+            Unit {
+                id,
+                name,
+                nation,
+                utype,
+            },
+        );
     }
     Ok(vessels)
 }
