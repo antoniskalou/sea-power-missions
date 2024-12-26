@@ -125,39 +125,39 @@ fn load_vessel_names() -> Result<HashMap<String, String>, UnitDbError> {
 fn load_vessels(nations: &HashMap<String, Nation>) -> Result<HashMap<String, Unit>, UnitDbError> {
     let names = load_vessel_names()?;
     let mut vessels = HashMap::new();
+
     for entry in fs::read_dir(dir::vessel_dir())? {
-        let entry = entry?;
-        let path = entry.path();
-        let id = path_to_id(&path).unwrap(); // FIXME: unwrap
+        let path = entry?.path();
+        let id = match path_to_id(&path) {
+            // skip storing variants for now, TODO
+            Some(id) if !id.ends_with("_variants") => id.to_string(),
+            _ => continue // skip invalid or variant ID's
+        };
 
-        // skip storing variants for now, TODO
-        if id.ends_with("_variants") {
-            continue;
-        }
+        let (nation_id, _) = match id.split_once("_") {
+            Some(split) => split,
+            None => continue,
+        };
 
-        if let Some((nation_id, _)) = id.split_once("_") {
-            let id = id.to_owned();
-            // if it doesn't exist, default to the ID
-            let name = names.get(&id).unwrap_or(&id).to_string();
-            // FIXME: way too many nested ifs
-            if let Some(nation) = nations.get(nation_id) {
-                let config = load_ini(&path)?;
-                let nation = nation.clone();
-                let utype = config
-                    .get("General", "UnitType")
-                    .map(UnitType::from)
-                    .unwrap_or(UnitType::Unknown);
-                vessels.insert(
-                    id.clone(),
-                    Unit {
-                        id,
-                        name,
-                        nation,
-                        utype,
-                    },
-                );
-            }
-        }
+        // skip vessels without names, if they don't have one, they're
+        // probably not important enough to include.
+        let name = match names.get(&id) {
+            Some(id) => id.to_string(),
+            _ => continue
+        };
+
+        let nation = match nations.get(nation_id) {
+            Some(nation) => nation.clone(),
+            None => continue, // skip invalid nations
+        };
+
+        let config = load_ini(&path)?;
+        let utype = config
+            .get("General", "UnitType")
+            .map(UnitType::from)
+            .unwrap_or(UnitType::Unknown);
+
+        vessels.insert(id.clone(), Unit {id, name, nation, utype, });
     }
     Ok(vessels)
 }
@@ -201,8 +201,8 @@ impl UnitDb {
         Ok(Self { nations, units })
     }
 
-    pub fn nation(&self, id: &str) -> Option<&Nation> {
-        self.nations.get(id)
+    pub fn nations(&self) -> Vec<&Nation> {
+        self.nations.values().collect()
     }
 
     pub fn all(&self) -> Vec<&Unit> {
@@ -211,17 +211,6 @@ impl UnitDb {
 
     pub fn by_id(&self, id: &str) -> Option<&Unit> {
         self.units.get(id)
-    }
-
-    pub fn by_nation(&self, nation: &str) -> Vec<&Unit> {
-        self.units
-            .values()
-            .filter(|v| v.nation.id == nation)
-            .collect()
-    }
-
-    pub fn by_type(&self, utype: UnitType) -> Vec<&Unit> {
-        self.units.values().filter(|v| v.utype == utype).collect()
     }
 
     pub fn search(&self, nation: Option<&str>, utype: Option<UnitType>) -> Vec<&Unit> {
