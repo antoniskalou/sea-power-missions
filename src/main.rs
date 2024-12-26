@@ -26,7 +26,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         let unit_db = unit_db.clone();
         move |options| {
             let mission = Mission::new(&unit_db.clone(), options);
-            eprintln!("{:#?}", mission);
 
             // FIXME: give for useful errors to user
             let mut config = load_template().expect("load template failed");
