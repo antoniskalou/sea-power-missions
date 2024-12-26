@@ -58,9 +58,9 @@ impl UnitOrRandom {
     }
 }
 
-impl Into<UnitOption> for UnitOrRandom {
-    fn into(self) -> UnitOption {
-        match self {
+impl From<UnitOrRandom> for UnitOption {
+    fn from(value: UnitOrRandom) -> Self {
+        match value {
             UnitOrRandom::Unit(unit) => UnitOption::Unit(unit.id),
             UnitOrRandom::Random { nation, utype } => UnitOption::Random { nation, utype },
         }
@@ -264,7 +264,7 @@ where
 }
 
 fn customise_group_view<F>(
-    available: &Vec<UnitOrRandom>,
+    available: &[UnitOrRandom],
     nations: &Vec<Nation>,
     on_submit: F
 ) -> impl View
@@ -348,7 +348,7 @@ where
     .title("Filters");
 
     let available_panel = Panel::new(
-        UnitTable::new(available.clone())
+        UnitTable::new(available.to_owned())
             .on_submit(add_selected)
             .with_name("available"),
     )
@@ -386,7 +386,7 @@ where
         .full_screen()
 }
 
-fn convert_units(units: &Vec<Unit>) -> Vec<UnitOrRandom> {
+fn convert_units(units: &[Unit]) -> Vec<UnitOrRandom> {
     let mut all_units = randoms();
     all_units.extend(units.iter().map(|unit| UnitOrRandom::Unit(unit.clone())));
     all_units

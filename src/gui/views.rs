@@ -130,13 +130,13 @@ impl UnitTreeSelection {
         self.formations
             .iter()
             .map(|f| FormationOption {
-                units: units_to_options(&f),
+                units: units_to_options(f),
             })
             .collect()
     }
 }
 
-fn units_to_options(units: &Vec<UnitOrRandom>) -> Vec<UnitOption> {
+fn units_to_options(units: &[UnitOrRandom]) -> Vec<UnitOption> {
     units.iter().cloned().map(|u| u.into()).collect()
 }
 

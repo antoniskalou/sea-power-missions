@@ -69,9 +69,9 @@ impl std::fmt::Display for Nation {
 
 // normally this wouldn't be required, since std::fmt::Display covers that use-case,
 // but cursive_tree_view insists of needing this
-impl Into<String> for &Nation {
-    fn into(self) -> String {
-        self.to_string()
+impl From<&Nation> for String {
+    fn from(value: &Nation) -> Self {
+        value.to_string()
     }
 }
 
