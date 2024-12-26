@@ -140,7 +140,6 @@ impl App {
 
         let mut siv = cursive::default();
         siv.set_window_title("Sea Power Mission Generator");
-        siv.add_global_callback('q', Cursive::quit);
         siv.add_global_callback('`', Cursive::toggle_debug_console);
 
         siv.add_layer(main_view(self, on_submit));
@@ -194,9 +193,8 @@ where
             "Nation",
             SelectView::new()
                 .popup()
-                .item_str("Soviet")
-                .item_str("China")
-                .item_str("Iran"),
+                // FIXME: remove civilian from selection
+                .with_all_str(nations.iter())
         )
         .child(
             "Unit Groups",
@@ -220,9 +218,7 @@ where
             "Nation",
             SelectView::new()
                 .popup()
-                .item_str("US")
-                .item_str("Iraq")
-                .item_str("Norway"),
+                .with_all_str(nations.iter())
         )
         .child(
             "Unit Groups",
