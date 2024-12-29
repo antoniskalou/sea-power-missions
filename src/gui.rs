@@ -18,19 +18,13 @@ use cursive::Cursive;
 use views::{UnitTable, UnitTree, UnitTreeSelection};
 
 #[derive(Clone, Debug)]
-pub enum UnitOrRandom {
-    Unit(Unit),
-    Random {
-        nation: Option<String>,
-        utype: Option<UnitType>,
-    },
-}
+pub struct UnitOrRandom(UnitOption);
 
 impl UnitOrRandom {
     fn name(&self) -> String {
-        match self {
-            UnitOrRandom::Unit(unit) => unit.name.clone(),
-            UnitOrRandom::Random { nation, utype } => {
+        match &self.0 {
+            UnitOption::Unit(unit) => unit.name.clone(),
+            UnitOption::Random { nation, utype } => {
                 // TODO: cleanup, will want to add more filters later
                 match (nation, utype) {
                     (Some(nation), Some(utype)) => format!("<RANDOM {nation} {utype}>"),
@@ -43,16 +37,16 @@ impl UnitOrRandom {
     }
 
     fn nation(&self) -> String {
-        match self {
-            UnitOrRandom::Unit(unit) => unit.nation.name.clone(),
-            UnitOrRandom::Random { nation, .. } => nation.clone().unwrap_or("<RANDOM>".into()),
+        match &self.0 {
+            UnitOption::Unit(unit) => unit.nation.name.clone(),
+            UnitOption::Random { nation, .. } => nation.clone().unwrap_or("<RANDOM>".into()),
         }
     }
 
     fn utype(&self) -> String {
-        match self {
-            UnitOrRandom::Unit(unit) => unit.utype.to_string(),
-            UnitOrRandom::Random { utype, .. } => {
+        match &self.0 {
+            UnitOption::Unit(unit) => unit.utype.to_string(),
+            UnitOption::Random { utype, .. } => {
                 utype.map_or("RANDOM".into(), |utype| utype.to_string())
             }
         }
@@ -61,10 +55,7 @@ impl UnitOrRandom {
 
 impl From<UnitOrRandom> for UnitOption {
     fn from(value: UnitOrRandom) -> Self {
-        match value {
-            UnitOrRandom::Unit(unit) => UnitOption::Unit(unit),
-            UnitOrRandom::Random { nation, utype } => UnitOption::Random { nation, utype },
-        }
+        value.0
     }
 }
 
@@ -84,7 +75,8 @@ impl AppState {
         all_units.extend(
             self.all_units
                 .iter()
-                .map(|unit| UnitOrRandom::Unit(unit.clone())),
+                .map(|unit| UnitOption::Unit(unit.clone()))
+                .map(UnitOrRandom),
         );
         all_units
     }
@@ -350,10 +342,11 @@ fn randoms(nations: &[Nation]) -> Vec<UnitOrRandom> {
         nations.iter().map(Some).chain(std::iter::once(None)),
         types.iter().map(Some).chain(std::iter::once(None))
     )
-    .map(|(nation, utype)| UnitOrRandom::Random {
+    .map(|(nation, utype)| UnitOption::Random {
         nation: nation.cloned().map(|n| n.name),
         utype: utype.copied(),
     })
+    .map(UnitOrRandom)
     .collect::<Vec<_>>()
 }
 
