@@ -142,8 +142,10 @@ where
             Button::new("Customise...", {
                 let state = state.clone();
                 move |s| {
+                    let mission = state.mission.lock().unwrap();
                     let view = customise_group_view(
                         &state,
+                        &mission.neutral,
                         fill_taskforce(state.mission.clone(), |mission| &mut mission.neutral),
                     );
                     s.add_layer(view);
@@ -165,8 +167,10 @@ where
             Button::new("Customise...", {
                 let state = state.clone();
                 move |s| {
+                    let mission = state.mission.lock().unwrap();
                     let view = customise_group_view(
                         &state,
+                        &mission.blue,
                         fill_taskforce(state.mission.clone(), |mission| &mut mission.blue),
                     );
                     s.add_layer(view);
@@ -184,8 +188,10 @@ where
             Button::new("Customise...", {
                 let state = state.clone();
                 move |s| {
+                    let mission = state.mission.lock().unwrap();
                     let view = customise_group_view(
                         &state,
+                        &mission.red,
                         fill_taskforce(state.mission.clone(), |mission| &mut mission.red),
                     );
                     s.add_layer(view);
@@ -214,7 +220,11 @@ where
         )
 }
 
-fn customise_group_view<F>(state: &AppState, on_submit: F) -> impl View
+fn customise_group_view<F>(
+    state: &AppState,
+    taskforce: &TaskforceOptions,
+    on_submit: F,
+) -> impl View
 where
     F: Fn(&mut Cursive, views::UnitTreeSelection) + Send + Sync + 'static,
 {
@@ -303,8 +313,8 @@ where
 
     let selected_panel = Panel::new(
         UnitTree::new()
-            // TODO: do necessary type conversions, also figure out how to get correct taskforce
-            // .with_selection(UnitTreeSelection::from(state.mission.lock().unwrap().neutral))
+            // FIXME: shouldn't need to clone
+            .with_selection(UnitTreeSelection::from(taskforce.clone()))
             .on_remove(remove_selected)
             .with_name("selected")
             .scrollable(),

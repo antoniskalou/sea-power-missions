@@ -136,8 +136,24 @@ impl UnitTreeSelection {
     }
 }
 
+impl From<TaskforceOptions> for UnitTreeSelection {
+    fn from(taskforce: TaskforceOptions) -> Self {
+        let units = options_to_units(&taskforce.units);
+        let formations = taskforce
+            .formations
+            .iter()
+            .map(|f| options_to_units(&f.units))
+            .collect();
+        Self { units, formations }
+    }
+}
+
+fn options_to_units(opts: &[UnitOption]) -> Vec<UnitSelection> {
+    opts.iter().cloned().map(UnitSelection).collect()
+}
+
 fn units_to_options(units: &[UnitSelection]) -> Vec<UnitOption> {
-    units.iter().cloned().map(|u| u.into()).collect()
+    units.iter().cloned().map(Into::into).collect()
 }
 
 /// A tree view that keeps track of units and associated formations.
