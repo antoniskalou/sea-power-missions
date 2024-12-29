@@ -71,10 +71,11 @@ impl From<UnitOrRandom> for UnitOption {
 // #[derive(Clone, Debug)]
 // struct MaybeUnit(UnitOrRandom);
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct AppState {
-    all_units: Vec<Unit>,
-    nations: Vec<Nation>,
+    all_units: Arc<Vec<Unit>>,
+    nations: Arc<Vec<Nation>>,
+    mission: Arc<Mutex<MissionOptions>>,
 }
 
 impl AppState {
@@ -95,9 +96,12 @@ pub struct App {
 
 impl App {
     pub fn new(unit_db: &UnitDb) -> Self {
+        let all_units = unit_db.all().into_iter().cloned().collect();
+        let nations = unit_db.nations().into_iter().cloned().collect();
         let state = AppState {
-            all_units: unit_db.all().into_iter().cloned().collect(),
-            nations: unit_db.nations().into_iter().cloned().collect(),
+            all_units: Arc::new(all_units),
+            nations: Arc::new(nations),
+            mission: Arc::new(Mutex::new(MissionOptions::default())),
         };
         Self { state }
     }
@@ -123,9 +127,6 @@ fn main_view<F>(state: AppState, on_submit: F) -> impl View
 where
     F: Fn(MissionOptions) + Send + Sync + 'static,
 {
-    let state = Arc::new(state);
-    let mission = Arc::new(Mutex::new(MissionOptions::default()));
-
     let general_form = ListView::new()
         .child(
             "Latitude/Longitude",
@@ -143,7 +144,7 @@ where
         );
 
     let neutral_form = {
-        let mission = mission.clone();
+        let state = state.clone();
         ListView::new().child(
             "Unit Groups",
             Button::new("Customise...", {
@@ -151,7 +152,7 @@ where
                 move |s| {
                     let view = customise_group_view(
                         &state,
-                        fill_taskforce(mission.clone(), |mission| &mut mission.neutral),
+                        fill_taskforce(state.mission.clone(), |mission| &mut mission.neutral),
                     );
                     s.add_layer(view);
                 }
@@ -171,11 +172,10 @@ where
             "Unit Groups",
             Button::new("Customise...", {
                 let state = state.clone();
-                let mission = mission.clone();
                 move |s| {
                     let view = customise_group_view(
                         &state,
-                        fill_taskforce(mission.clone(), |mission| &mut mission.blue),
+                        fill_taskforce(state.mission.clone(), |mission| &mut mission.blue),
                     );
                     s.add_layer(view);
                 }
@@ -190,12 +190,11 @@ where
         .child(
             "Unit Groups",
             Button::new("Customise...", {
-                let mission = mission.clone();
                 let state = state.clone();
                 move |s| {
                     let view = customise_group_view(
                         &state,
-                        fill_taskforce(mission.clone(), |mission| &mut mission.red),
+                        fill_taskforce(state.mission.clone(), |mission| &mut mission.red),
                     );
                     s.add_layer(view);
                 }
@@ -205,12 +204,11 @@ where
     Dialog::new()
         .title("Create Mission")
         .button("Generate", {
-            let mission = mission.clone();
             move |s| {
-                let mut mission = mission.lock().unwrap();
+                let mut mission = state.mission.lock().unwrap();
                 fill_mission(s, &mut mission);
                 on_submit(mission.clone());
-                // TODO: show more useful info
+                // TODO: show info on where it was generated
                 s.add_layer(Dialog::info("Mission generated!"));
             }
         })
@@ -276,7 +274,7 @@ where
                 SelectView::new()
                     .popup()
                     .item_str("<ALL>")
-                    .with_all_str(&state.nations)
+                    .with_all_str(state.nations.iter())
                     .on_submit(filter)
                     .with_name("filter_nation")
                     .max_width(20),
