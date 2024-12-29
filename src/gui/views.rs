@@ -154,6 +154,22 @@ impl UnitTree {
         }
     }
 
+    pub fn with_selection(mut self, selection: UnitTreeSelection) -> Self {
+        for unit in selection.units {
+            self.add_unit(unit);
+        }
+
+        for formation in selection.formations {
+            self.add_formation();
+            // FIXME: can use recursion for this
+            for unit in formation {
+                self.add_unit(unit);
+            }
+        }
+
+        self
+    }
+
     // TODO: allow creating with items so as to re-fill list if re-opened
     // pub fn with_items(items: Vec<UnitOrRandom>) -> Self {}
 

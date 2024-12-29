@@ -15,7 +15,7 @@ use cursive::views::{
 };
 use cursive::Cursive;
 
-use views::{UnitTable, UnitTree};
+use views::{UnitTable, UnitTree, UnitTreeSelection};
 
 #[derive(Clone, Debug)]
 pub enum UnitOrRandom {
@@ -62,7 +62,7 @@ impl UnitOrRandom {
 impl From<UnitOrRandom> for UnitOption {
     fn from(value: UnitOrRandom) -> Self {
         match value {
-            UnitOrRandom::Unit(unit) => UnitOption::Unit(unit.id),
+            UnitOrRandom::Unit(unit) => UnitOption::Unit(unit),
             UnitOrRandom::Random { nation, utype } => UnitOption::Random { nation, utype },
         }
     }
@@ -311,6 +311,8 @@ where
 
     let selected_panel = Panel::new(
         UnitTree::new()
+            // TODO: do necessary type conversions, also figure out how to get correct taskforce
+            // .with_selection(UnitTreeSelection::from(state.mission.lock().unwrap().neutral))
             .on_remove(remove_selected)
             .with_name("selected")
             .scrollable(),

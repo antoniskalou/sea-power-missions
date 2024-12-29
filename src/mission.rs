@@ -4,7 +4,7 @@ use crate::rand_ext;
 use configparser::ini::Ini;
 use rand::{seq::SliceRandom, thread_rng};
 
-use crate::unit_db::{self, UnitDb, UnitId, UnitType};
+use crate::unit_db::{self as db, UnitDb, UnitType};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum WeaponState {
@@ -27,7 +27,7 @@ impl std::fmt::Display for WeaponState {
 
 #[derive(Clone, Debug)]
 pub enum UnitOption {
-    Unit(UnitId),
+    Unit(db::Unit),
     Random {
         nation: Option<String>,
         utype: Option<UnitType>,
@@ -173,8 +173,8 @@ fn insert_units(
     unit_opts
         .iter()
         .filter_map(|unit_opt| match unit_opt {
-            UnitOption::Unit(id) => unit_db
-                .by_id(id)
+            UnitOption::Unit(unit) => unit_db
+                .by_id(&unit.id)
                 // TODO: fail if not found
                 .map(|unit| insert_unit(general, units, unit)),
             UnitOption::Random { nation, utype } => {
@@ -190,12 +190,12 @@ fn insert_units(
 fn insert_unit(
     general: &GeneralOptions,
     units: &mut HashMap<UnitType, Vec<Unit>>,
-    db_unit: &unit_db::Unit,
+    unit: &db::Unit,
 ) -> UnitReference {
-    let unit_list = units.entry(db_unit.utype).or_default();
+    let unit_list = units.entry(unit.utype).or_default();
     let index = unit_list.len();
-    unit_list.push(Unit::new(general, &db_unit.id));
-    (db_unit.utype, index)
+    unit_list.push(Unit::new(general, &unit.id));
+    (unit.utype, index)
 }
 
 fn formation_str(taskforce: &str, formation: &[UnitReference]) -> String {
