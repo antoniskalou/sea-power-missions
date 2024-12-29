@@ -146,7 +146,7 @@ where
                     let view = customise_group_view(
                         &state,
                         &mission.neutral,
-                        fill_taskforce(state.mission.clone(), |mission| &mut mission.neutral),
+                        fill_taskforce(state.mission.clone(), |m| &mut m.neutral),
                     );
                     s.add_layer(view);
                 }
@@ -171,7 +171,7 @@ where
                     let view = customise_group_view(
                         &state,
                         &mission.blue,
-                        fill_taskforce(state.mission.clone(), |mission| &mut mission.blue),
+                        fill_taskforce(state.mission.clone(), |m| &mut m.blue),
                     );
                     s.add_layer(view);
                 }
@@ -192,7 +192,7 @@ where
                     let view = customise_group_view(
                         &state,
                         &mission.red,
-                        fill_taskforce(state.mission.clone(), |mission| &mut mission.red),
+                        fill_taskforce(state.mission.clone(), |m| &mut m.red),
                     );
                     s.add_layer(view);
                 }
@@ -383,7 +383,12 @@ fn fill_mission(s: &mut Cursive, mission: &mut MissionOptions) {
     mission.general = mission::GeneralOptions { latlon, size };
 }
 
-// Fill taskforce options based off what was selected by in the UI.
+/// Fill taskforce options based off what was selected by in the UI.
+///
+/// The `fetcher` returns the correct taskforce given a mission. This is so that
+/// we can use it for all taskforce options (red, blue, neutral). Unfortunately,
+/// we can't simplify this one much further given that everything has to be
+/// Send + Sync.
 fn fill_taskforce<F>(
     mission: Arc<Mutex<MissionOptions>>,
     fetcher: F,
