@@ -71,6 +71,8 @@ impl UnitTable {
         );
     }
 
+    // pub fn search(&mut self, name: &str) { }
+
     /// Return an immutable reference to the unit at the given row.
     pub fn borrow_item(&self, row: usize) -> Option<&UnitSelection> {
         self.view.borrow_item(row)
@@ -136,8 +138,8 @@ impl UnitTreeSelection {
     }
 }
 
-impl From<TaskforceOptions> for UnitTreeSelection {
-    fn from(taskforce: TaskforceOptions) -> Self {
+impl From<&TaskforceOptions> for UnitTreeSelection {
+    fn from(taskforce: &TaskforceOptions) -> Self {
         let units = options_to_units(&taskforce.units);
         let formations = taskforce
             .formations

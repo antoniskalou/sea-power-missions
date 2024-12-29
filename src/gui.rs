@@ -313,8 +313,7 @@ where
 
     let selected_panel = Panel::new(
         UnitTree::new()
-            // FIXME: shouldn't need to clone
-            .with_selection(UnitTreeSelection::from(taskforce.clone()))
+            .with_selection(UnitTreeSelection::from(taskforce))
             .on_remove(remove_selected)
             .with_name("selected")
             .scrollable(),
