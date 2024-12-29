@@ -16,9 +16,9 @@ pub enum UnitType {
 }
 
 impl UnitType {
-    pub fn all() -> Vec<Self> {
+    pub fn all() -> [Self; 4] {
         use UnitType::*;
-        vec![Ship, Submarine, Helicopter, FixedWing]
+        [Ship, Submarine, Helicopter, FixedWing]
     }
 
     pub fn capitalised_singular(&self) -> String {
