@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::mission::{FormationOption, TaskforceOptions, UnitOption};
 
 use super::reusable_id::ReusableId;
-use super::UnitOrRandom;
+use super::UnitSelection;
 use cursive::align::HAlign;
 use cursive::wrap_impl;
 use cursive::{view::ViewWrapper, Cursive};
@@ -17,7 +17,7 @@ pub enum UnitColumn {
     Type,
 }
 
-impl TableViewItem<UnitColumn> for UnitOrRandom {
+impl TableViewItem<UnitColumn> for UnitSelection {
     fn to_column(&self, column: UnitColumn) -> String {
         match column {
             UnitColumn::Name => self.name(),
@@ -40,14 +40,14 @@ impl TableViewItem<UnitColumn> for UnitOrRandom {
 
 /// A table view that keeps track of all available units.
 pub struct UnitTable {
-    all_units: Vec<UnitOrRandom>,
-    view: TableView<UnitOrRandom, UnitColumn>,
+    all_units: Vec<UnitSelection>,
+    view: TableView<UnitSelection, UnitColumn>,
 }
 
 impl UnitTable {
     /// Create a new unit table with a list of all available units.
-    pub fn new(all_units: Vec<UnitOrRandom>) -> Self {
-        let view = TableView::<UnitOrRandom, UnitColumn>::new()
+    pub fn new(all_units: Vec<UnitSelection>) -> Self {
+        let view = TableView::<UnitSelection, UnitColumn>::new()
             .column(UnitColumn::Name, "Name", |c| c.align(HAlign::Left))
             .column(UnitColumn::Nation, "Nation", |c| {
                 c.align(HAlign::Center).width_percent(20)
@@ -72,7 +72,7 @@ impl UnitTable {
     }
 
     /// Return an immutable reference to the unit at the given row.
-    pub fn borrow_item(&self, row: usize) -> Option<&UnitOrRandom> {
+    pub fn borrow_item(&self, row: usize) -> Option<&UnitSelection> {
         self.view.borrow_item(row)
     }
 
@@ -88,12 +88,12 @@ impl UnitTable {
 }
 
 impl ViewWrapper for UnitTable {
-    wrap_impl!(self.view: TableView<UnitOrRandom, UnitColumn>);
+    wrap_impl!(self.view: TableView<UnitSelection, UnitColumn>);
 }
 
 #[derive(Clone, Debug)]
 pub enum UnitTreeItem {
-    Unit(UnitOrRandom),
+    Unit(UnitSelection),
     Formation(usize),
 }
 
@@ -111,8 +111,8 @@ impl std::fmt::Display for UnitTreeItem {
 // TODO: consider removing
 #[derive(Debug)]
 pub struct UnitTreeSelection {
-    pub units: Vec<UnitOrRandom>,
-    pub formations: Vec<Vec<UnitOrRandom>>,
+    pub units: Vec<UnitSelection>,
+    pub formations: Vec<Vec<UnitSelection>>,
 }
 
 impl UnitTreeSelection {
@@ -136,7 +136,7 @@ impl UnitTreeSelection {
     }
 }
 
-fn units_to_options(units: &[UnitOrRandom]) -> Vec<UnitOption> {
+fn units_to_options(units: &[UnitSelection]) -> Vec<UnitOption> {
     units.iter().cloned().map(|u| u.into()).collect()
 }
 
@@ -171,7 +171,7 @@ impl UnitTree {
     }
 
     // TODO: allow creating with items so as to re-fill list if re-opened
-    // pub fn with_items(items: Vec<UnitOrRandom>) -> Self {}
+    // pub fn with_items(items: Vec<UnitSelection>) -> Self {}
 
     /// Callback for when an item has requested removal.
     pub fn on_remove<F>(mut self, cb: F) -> Self
@@ -192,7 +192,7 @@ impl UnitTree {
 
     /// Add a unit to the tree, this will either be top level or if part of a
     /// formation if previously defined.
-    pub fn add_unit(&mut self, unit: UnitOrRandom) {
+    pub fn add_unit(&mut self, unit: UnitSelection) {
         let insert_at = self.view.row().unwrap_or(0);
         let placement = self
             .view
@@ -255,7 +255,7 @@ impl UnitTree {
     /// Return all selected items (units & formations) from the tree.
     pub fn selected(&self) -> UnitTreeSelection {
         let mut units = Vec::new();
-        let mut formations: Vec<Vec<UnitOrRandom>> = Vec::new();
+        let mut formations: Vec<Vec<UnitSelection>> = Vec::new();
         for item in self.items() {
             match item {
                 UnitTreeItem::Unit(unit) => {

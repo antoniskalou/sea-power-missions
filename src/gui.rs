@@ -18,9 +18,9 @@ use cursive::Cursive;
 use views::{UnitTable, UnitTree, UnitTreeSelection};
 
 #[derive(Clone, Debug)]
-pub struct UnitOrRandom(UnitOption);
+pub struct UnitSelection(UnitOption);
 
-impl UnitOrRandom {
+impl UnitSelection {
     fn name(&self) -> String {
         match &self.0 {
             UnitOption::Unit(unit) => unit.name.clone(),
@@ -53,14 +53,14 @@ impl UnitOrRandom {
     }
 }
 
-impl From<UnitOrRandom> for UnitOption {
-    fn from(value: UnitOrRandom) -> Self {
+impl From<UnitSelection> for UnitOption {
+    fn from(value: UnitSelection) -> Self {
         value.0
     }
 }
 
 // #[derive(Clone, Debug)]
-// struct MaybeUnit(UnitOrRandom);
+// struct MaybeUnit(UnitSelection);
 
 #[derive(Clone, Debug)]
 struct AppState {
@@ -70,13 +70,13 @@ struct AppState {
 }
 
 impl AppState {
-    fn units_with_random(&self) -> Vec<UnitOrRandom> {
+    fn units_with_random(&self) -> Vec<UnitSelection> {
         let mut all_units = randoms(&self.nations);
         all_units.extend(
             self.all_units
                 .iter()
                 .map(|unit| UnitOption::Unit(unit.clone()))
-                .map(UnitOrRandom),
+                .map(UnitSelection),
         );
         all_units
     }
@@ -335,8 +335,8 @@ where
         .full_screen()
 }
 
-// Generate all permutations of UnitOrRandom::Random that we could possibly have.
-fn randoms(nations: &[Nation]) -> Vec<UnitOrRandom> {
+// Generate all permutations of UnitSelection::Random that we could possibly have.
+fn randoms(nations: &[Nation]) -> Vec<UnitSelection> {
     let types = UnitType::all();
     iproduct!(
         nations.iter().map(Some).chain(std::iter::once(None)),
@@ -346,7 +346,7 @@ fn randoms(nations: &[Nation]) -> Vec<UnitOrRandom> {
         nation: nation.cloned().map(|n| n.name),
         utype: utype.copied(),
     })
-    .map(UnitOrRandom)
+    .map(UnitSelection)
     .collect::<Vec<_>>()
 }
 
