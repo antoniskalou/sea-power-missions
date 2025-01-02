@@ -1,8 +1,9 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 use crate::dir;
 use configparser::ini::Ini;
 use std::{fs, io, path::Path};
+use thiserror::Error;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum UnitType {
@@ -33,7 +34,7 @@ impl UnitType {
     }
 
     pub fn calitalised_plural(&self) -> String {
-        if let Self::FixedWing = self {
+        if *self == Self::FixedWing {
             "Aircraft".to_owned()
         } else {
             format!("{}s", self.capitalised_singular())
@@ -91,6 +92,55 @@ pub struct Unit {
     pub utype: UnitType,
 }
 
+#[derive(Error, Debug)]
+pub enum UnitDbError {
+    #[error("failed to parse ini file {file}: {reason}")]
+    ParseError { file: PathBuf, reason: String },
+    #[error(transparent)]
+    IOError(#[from] io::Error),
+}
+
+#[derive(Debug)]
+pub struct UnitDb {
+    /// map of nation id => nation name
+    nations: HashMap<String, Nation>,
+    // map of unit id => unit
+    units: HashMap<String, Unit>,
+}
+
+impl UnitDb {
+    pub fn new() -> Result<Self, UnitDbError> {
+        let nations = load_nation_reference()?;
+        let mut units = HashMap::new();
+        units.extend(load_vessels(&nations)?);
+        units.extend(load_aircraft()?);
+        Ok(Self { nations, units })
+    }
+
+    pub fn nations(&self) -> Vec<&Nation> {
+        let mut nations: Vec<&Nation> = self.nations.values().collect();
+        nations.sort_by(|a, b| a.id.cmp(&b.id));
+        nations
+    }
+
+    pub fn all(&self) -> Vec<&Unit> {
+        self.units.values().collect()
+    }
+
+    pub fn by_id(&self, id: &str) -> Option<&Unit> {
+        self.units.get(id)
+    }
+
+    pub fn search(&self, nation: Option<&str>, utype: Option<UnitType>) -> Vec<&Unit> {
+        self.all()
+            .iter()
+            .filter(|v| nation.map(|n| v.nation.id == n).unwrap_or(true))
+            .filter(|v| utype.map(|s| v.utype == s).unwrap_or(true))
+            .copied()
+            .collect()
+    }
+}
+
 /// Sea Power encodes unit information in the filename, usually structured
 /// like <nation>_<vessel_name>
 fn path_to_id(path: &Path) -> Option<&str> {
@@ -98,10 +148,16 @@ fn path_to_id(path: &Path) -> Option<&str> {
 }
 
 /// load a unit ini file
-fn load_ini(path: &Path) -> Result<Ini, String> {
+fn load_ini(path: &Path) -> Result<Ini, UnitDbError> {
     let mut config = Ini::new();
-    config.load(path)?;
-    Ok(config)
+
+    match config.load(path) {
+        Ok(_) => Ok(config),
+        Err(reason) => Err(UnitDbError::ParseError {
+            file: path.to_owned(),
+            reason,
+        }),
+    }
 }
 
 fn load_nation_reference() -> Result<HashMap<String, Nation>, UnitDbError> {
@@ -193,71 +249,4 @@ fn load_vessels(nations: &HashMap<String, Nation>) -> Result<HashMap<String, Uni
 
 fn load_aircraft() -> Result<HashMap<String, Unit>, UnitDbError> {
     Ok(HashMap::new())
-}
-
-pub enum UnitDbError {
-    IOError(io::Error),
-    ParseError(String),
-}
-
-impl std::fmt::Debug for UnitDbError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            UnitDbError::IOError(err) => write!(f, "IOError: {}", err),
-            UnitDbError::ParseError(err) => write!(f, "ParseError: {}", err),
-        }
-    }
-}
-
-impl From<io::Error> for UnitDbError {
-    fn from(value: io::Error) -> Self {
-        Self::IOError(value)
-    }
-}
-
-impl From<String> for UnitDbError {
-    fn from(value: String) -> Self {
-        Self::ParseError(value)
-    }
-}
-
-#[derive(Debug)]
-pub struct UnitDb {
-    /// map of nation id => nation name
-    nations: HashMap<String, Nation>,
-    // map of unit id => unit
-    units: HashMap<String, Unit>,
-}
-
-impl UnitDb {
-    pub fn new() -> Result<Self, UnitDbError> {
-        let nations = load_nation_reference()?;
-        let mut units = HashMap::new();
-        units.extend(load_vessels(&nations)?);
-        units.extend(load_aircraft()?);
-        Ok(Self { nations, units })
-    }
-
-    pub fn nations(&self) -> Vec<&Nation> {
-        let mut nations: Vec<&Nation> = self.nations.values().collect();
-        nations.sort_by(|a, b| a.id.cmp(&b.id));
-        nations
-    }
-
-    pub fn all(&self) -> Vec<&Unit> {
-        self.units.values().collect()
-    }
-
-    pub fn by_id(&self, id: &str) -> Option<&Unit> {
-        self.units.get(id)
-    }
-
-    pub fn search(&self, nation: Option<&str>, utype: Option<UnitType>) -> Vec<&Unit> {
-        self.all()
-            .iter()
-            .filter(|v| nation.map(|n| v.nation.id == n).unwrap_or(true))
-            .filter(|v| utype.map(|s| v.utype == s).unwrap_or(true))
-            .copied()
-            .collect()
-    }
 }
