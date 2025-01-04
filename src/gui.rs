@@ -1,7 +1,6 @@
 mod reusable_id;
 mod views;
 
-use itertools::iproduct;
 use std::sync::{Arc, Mutex};
 
 use crate::mission::{self, MissionOptions, TaskforceOptions, UnitOption};
@@ -67,19 +66,6 @@ struct AppState {
     all_units: Arc<Vec<Unit>>,
     nations: Arc<Vec<Nation>>,
     mission: Arc<Mutex<MissionOptions>>,
-}
-
-impl AppState {
-    fn units_with_random(&self) -> Vec<UnitSelection> {
-        let mut all_units = randoms(&self.nations);
-        all_units.extend(
-            self.all_units
-                .iter()
-                .map(|unit| UnitOption::Unit(unit.clone()))
-                .map(UnitSelection),
-        );
-        all_units
-    }
 }
 
 pub struct App {
@@ -234,7 +220,7 @@ where
             .expect("missing available view");
         if let Some(item) = available.borrow_item(row) {
             s.call_on_name("selected", |selected: &mut UnitTree| {
-                selected.add_unit(item.clone());
+                selected.add_unit(UnitSelection(UnitOption::Unit(item.clone())));
             });
         }
     }
@@ -249,6 +235,12 @@ where
         s.call_on_name("selected", |selected: &mut UnitTree| {
             selected.add_formation();
         });
+    }
+
+    fn add_random(s: &mut Cursive, state: AppState) {
+        s.add_layer(random_unit_view(&state, |_| {
+            info!("adding a new random item...");
+        }));
     }
 
     fn filter(s: &mut Cursive, _item: &str) {
@@ -291,21 +283,12 @@ where
                     .on_submit(filter)
                     .with_name("filter_utype")
                     .max_width(20),
-            )
-            .child(
-                "Random",
-                SelectView::new()
-                    .popup()
-                    .item_str("<ALL>")
-                    .item_str("Only RANDOM")
-                    .item_str("No RANDOM")
-                    .max_width(20),
             ),
     )
     .title("Filters");
 
     let available_panel = Panel::new(
-        UnitTable::new(state.units_with_random())
+        UnitTable::new(state.all_units.to_vec())
             .on_submit(add_selected)
             .with_name("available"),
     )
@@ -334,7 +317,11 @@ where
                 .child(available_panel.min_size((32, 20)))
                 .child(
                     LinearLayout::horizontal()
-                        .child(Button::new("Create Formation", add_formation)),
+                        .child(Button::new("Create Formation", add_formation))
+                        .child(Button::new("Create Random", {
+                            let state = state.clone();
+                            move |s| add_random(s, state.clone())
+                        })),
                 )
                 // spacing
                 .child(ResizedView::with_fixed_size((4, 0), DummyView))
@@ -344,19 +331,35 @@ where
         .full_screen()
 }
 
-// Generate all permutations of UnitSelection::Random that we could possibly have.
-fn randoms(nations: &[Nation]) -> Vec<UnitSelection> {
-    let types = UnitType::all();
-    iproduct!(
-        nations.iter().map(Some).chain(std::iter::once(None)),
-        types.iter().map(Some).chain(std::iter::once(None))
+fn random_unit_view<F>(state: &AppState, on_submit: F) -> impl View
+where
+    F: Fn(&mut Cursive) + Send + Sync + 'static,
+{
+    Dialog::around(
+        ListView::new()
+            .child(
+                "Nation",
+                SelectView::new()
+                    .popup()
+                    .item_str("<ANY>")
+                    .with_all_str(state.nations.iter())
+                    .with_name("random_nation")
+                    .max_width(20),
+            )
+            .child(
+                "Type",
+                SelectView::new()
+                    .popup()
+                    .item_str("<ANY>")
+                    // .with_all_str(UnitType::all())
+                    .with_name("random_type")
+                    .max_width(20),
+            ),
     )
-    .map(|(nation, utype)| UnitOption::Random {
-        nation: nation.cloned().map(|n| n.name),
-        utype: utype.copied(),
+    .button("Create", move |s| on_submit(s))
+    .button("Cancel", |s| {
+        s.pop_layer();
     })
-    .map(UnitSelection)
-    .collect::<Vec<_>>()
 }
 
 // Fill mission options based off what is currently in the UI.

@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::mission::{FormationOption, TaskforceOptions, UnitOption};
+use crate::unit_db as db;
 
 use super::reusable_id::ReusableId;
 use super::UnitSelection;
@@ -17,12 +18,12 @@ pub enum UnitColumn {
     Type,
 }
 
-impl TableViewItem<UnitColumn> for UnitSelection {
+impl TableViewItem<UnitColumn> for db::Unit {
     fn to_column(&self, column: UnitColumn) -> String {
         match column {
-            UnitColumn::Name => self.name(),
-            UnitColumn::Nation => self.nation(),
-            UnitColumn::Type => self.utype(),
+            UnitColumn::Name => self.name.clone(),
+            UnitColumn::Nation => self.nation.name.clone(),
+            UnitColumn::Type => self.utype.to_string(),
         }
     }
 
@@ -31,23 +32,23 @@ impl TableViewItem<UnitColumn> for UnitSelection {
         Self: Sized,
     {
         match column {
-            UnitColumn::Name => self.name().cmp(&other.name()),
-            UnitColumn::Nation => self.nation().cmp(&other.nation()),
-            UnitColumn::Type => self.nation().cmp(&other.utype()),
+            UnitColumn::Name => self.name.cmp(&other.name),
+            UnitColumn::Nation => self.nation.name.cmp(&other.nation.name),
+            UnitColumn::Type => self.utype.to_string().cmp(&other.utype.to_string()),
         }
     }
 }
 
 /// A table view that keeps track of all available units.
 pub struct UnitTable {
-    all_units: Vec<UnitSelection>,
-    view: TableView<UnitSelection, UnitColumn>,
+    all_units: Vec<db::Unit>,
+    view: TableView<db::Unit, UnitColumn>,
 }
 
 impl UnitTable {
     /// Create a new unit table with a list of all available units.
-    pub fn new(all_units: Vec<UnitSelection>) -> Self {
-        let view = TableView::<UnitSelection, UnitColumn>::new()
+    pub fn new(all_units: Vec<db::Unit>) -> Self {
+        let view = TableView::<db::Unit, UnitColumn>::new()
             .column(UnitColumn::Name, "Name", |c| c.align(HAlign::Left))
             .column(UnitColumn::Nation, "Nation", |c| {
                 c.align(HAlign::Center).width_percent(20)
@@ -64,8 +65,8 @@ impl UnitTable {
         self.view.set_items(
             self.all_units
                 .iter()
-                .filter(|unit| nation == "<ALL>" || nation == unit.nation())
-                .filter(|unit| utype == "<ALL>" || utype == unit.utype())
+                .filter(|unit| nation == "<ALL>" || nation == unit.nation.name)
+                .filter(|unit| utype == "<ALL>" || utype == unit.utype.to_string())
                 .cloned()
                 .collect(),
         );
@@ -74,7 +75,7 @@ impl UnitTable {
     // pub fn search(&mut self, name: &str) { }
 
     /// Return an immutable reference to the unit at the given row.
-    pub fn borrow_item(&self, row: usize) -> Option<&UnitSelection> {
+    pub fn borrow_item(&self, row: usize) -> Option<&db::Unit> {
         self.view.borrow_item(row)
     }
 
@@ -90,7 +91,7 @@ impl UnitTable {
 }
 
 impl ViewWrapper for UnitTable {
-    wrap_impl!(self.view: TableView<UnitSelection, UnitColumn>);
+    wrap_impl!(self.view: TableView<db::Unit, UnitColumn>);
 }
 
 #[derive(Clone, Debug)]

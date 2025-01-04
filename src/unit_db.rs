@@ -106,7 +106,7 @@ pub enum UnitDbError {
 pub struct UnitDb {
     /// map of nation id => nation name
     nations: HashMap<String, Nation>,
-    // map of unit id => unit
+    /// map of unit id => unit
     units: HashMap<String, Unit>,
 }
 
