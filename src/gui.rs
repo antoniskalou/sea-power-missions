@@ -224,8 +224,8 @@ where
     }
 
     fn add_random(s: &mut Cursive, state: AppState) {
-        s.add_layer(random_unit_view(&state, |_| {
-            info!("adding a new random item...");
+        s.add_layer(random_unit_view(&state, |_, nation, utype| {
+            info!("nation: {nation}, utype: {utype}");
         }));
     }
 
@@ -264,8 +264,7 @@ where
                 SelectView::new()
                     .popup()
                     .item_str("<ALL>")
-                    .item_str("Vessel")
-                    .item_str("Submarine")
+                    .with_all_str(UnitType::all())
                     .on_submit(filter)
                     .with_name("filter_utype")
                     .max_width(20),
@@ -319,7 +318,8 @@ where
 
 fn random_unit_view<F>(state: &AppState, on_submit: F) -> impl View
 where
-    F: Fn(&mut Cursive) + Send + Sync + 'static,
+    // FIXME: calls with &str, we want &Nation & &UnitType
+    F: Fn(&mut Cursive, &str, &str) + Send + Sync + 'static,
 {
     Dialog::around(
         ListView::new()
@@ -342,7 +342,16 @@ where
                     .max_width(20),
             ),
     )
-    .button("Create", move |s| on_submit(s))
+    .button("Create", move |s| {
+        let nation = s
+            .call_on_name("random_nation", |view: &mut SelectView| view.selection())
+            .expect("missing random_nation view");
+        let utype = s
+            .call_on_name("random_type", |view: &mut SelectView| view.selection())
+            .expect("missing random_type view");
+        on_submit(s, &nation.unwrap(), &utype.unwrap());
+        s.pop_layer();
+    })
     .button("Cancel", |s| {
         s.pop_layer();
     })
