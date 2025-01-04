@@ -38,6 +38,9 @@ impl UnitType {
     }
 }
 
+// normally this wouldn't be required, since std::fmt::Display covers that use-case,
+// but cursive_tree_view insists of needing this
+// TODO: see if this is really true or if im just missing something
 impl From<UnitType> for String {
     fn from(utype: UnitType) -> Self {
         utype.capitalised_singular()
@@ -82,7 +85,7 @@ impl std::fmt::Display for Nation {
     }
 }
 
-// normally this wouldn't be required, since std::fmt::Display covers that use-case,
+// normally this wouldnjt be required, since std::fmt::Display covers that use-case,
 // but cursive_tree_view insists of needing this
 impl From<&Nation> for String {
     fn from(value: &Nation) -> Self {
@@ -189,7 +192,7 @@ fn load_nation_reference() -> Result<HashMap<String, Nation>, UnitDbError> {
 }
 
 fn split_name_parts(name: &str) -> Vec<&str> {
-    name.split(",").collect()
+    name.split(",").filter(|s| !s.is_empty()).collect()
 }
 
 fn load_vessel_names() -> Result<HashMap<String, String>, UnitDbError> {
@@ -216,7 +219,7 @@ fn load_vessels(nations: &HashMap<String, Nation>) -> Result<HashMap<String, Uni
         let id = match path_to_id(&path) {
             // skip storing variants for now, TODO
             Some(id) if !id.ends_with("_variants") => id.to_string(),
-            _ => continue, // skip invalid or variant ID's
+            _ => continue, // skip invalid or variant IDjs
         };
 
         let (nation_id, _) = match id.split_once("_") {
@@ -261,4 +264,38 @@ fn load_vessels(nations: &HashMap<String, Nation>) -> Result<HashMap<String, Uni
 
 fn load_aircraft() -> Result<HashMap<String, Unit>, UnitDbError> {
     Ok(HashMap::new())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    #[test]
+    fn test_path_to_id() {
+        let path = Path::new("/home/user/civ_ms_bulk.ini");
+        assert_eq!(path_to_id(&path), Some("civ_ms_bulk"));
+
+        let path = Path::new("/home/user/civ_ms_bulk");
+        assert_eq!(path_to_id(&path), Some("civ_ms_bulk"));
+
+        // FIXME: doesn't treat dir paths properly
+        // let path = Path::new("/home/user/");
+        // assert!(path_to_id(&path).is_none());
+
+        let path = Path::new("/");
+        assert!(path_to_id(&path).is_none());
+
+        let path = Path::new("civ_ms_bulk.ini");
+        assert_eq!(path_to_id(&path), Some("civ_ms_bulk"));
+    }
+
+    #[test]
+    fn test_split_name_parts() {
+        assert_eq!(split_name_parts("a,b,c"), vec!["a", "b", "c"]);
+        assert_eq!(split_name_parts("a,"), vec!["a"]);
+        assert_eq!(split_name_parts("a"), vec!["a"]);
+        assert_eq!(split_name_parts(""), Vec::<&str>::new());
+        assert_eq!(split_name_parts(","), Vec::<&str>::new());
+    }
 }
