@@ -93,11 +93,9 @@ impl From<&Nation> for String {
     }
 }
 
-pub type UnitId = String;
-
 #[derive(Clone, Debug)]
 pub struct Unit {
-    pub id: UnitId,
+    pub id: String,
     pub name: String,
     pub nation: Nation,
     pub utype: UnitType,
