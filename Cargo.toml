@@ -15,3 +15,6 @@ configparser = "3.1"
 cursive = "0.21"
 cursive_table_view = "0.15"
 cursive_tree_view = "0.9"
+
+[dev-dependencies]
+fake = "3.1.0"
