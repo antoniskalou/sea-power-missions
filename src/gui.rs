@@ -17,37 +17,6 @@ use cursive::Cursive;
 use views::{UnitTable, UnitTree, UnitTreeSelection};
 
 #[derive(Clone, Debug)]
-pub struct UnitSelection(UnitOption);
-
-impl UnitSelection {
-    // TODO: move this to UnitTree, since its the only one using it and use
-    // UnitOption directly instead.
-    fn name(&self) -> String {
-        match &self.0 {
-            UnitOption::Unit(unit) => unit.name.clone(),
-            UnitOption::Random { nation, utype } => {
-                // TODO: cleanup, will want to add more filters later
-                match (nation, utype) {
-                    (Some(nation), Some(utype)) => format!("<RANDOM {nation} {utype}>"),
-                    (Some(nation), None) => format!("<RANDOM {nation}>"),
-                    (None, Some(utype)) => format!("<RANDOM {utype}>"),
-                    (None, None) => "<RANDOM>".into(),
-                }
-            }
-        }
-    }
-}
-
-impl From<UnitSelection> for UnitOption {
-    fn from(value: UnitSelection) -> Self {
-        value.0
-    }
-}
-
-// #[derive(Clone, Debug)]
-// struct MaybeUnit(UnitSelection);
-
-#[derive(Clone, Debug)]
 struct AppState {
     all_units: Arc<Vec<Unit>>,
     nations: Arc<Vec<Nation>>,
@@ -206,7 +175,7 @@ where
             .expect("missing available view");
         if let Some(item) = available.borrow_item(row) {
             s.call_on_name("selected", |selected: &mut UnitTree| {
-                selected.add_unit(UnitSelection(UnitOption::Unit(item.clone())));
+                selected.add_unit(UnitOption::Unit(item.clone()));
             });
         }
     }

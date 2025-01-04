@@ -4,7 +4,6 @@ use crate::mission::{FormationOption, TaskforceOptions, UnitOption};
 use crate::unit_db as db;
 
 use super::reusable_id::ReusableId;
-use super::UnitSelection;
 use cursive::align::HAlign;
 use cursive::wrap_impl;
 use cursive::{view::ViewWrapper, Cursive};
@@ -95,6 +94,34 @@ impl ViewWrapper for UnitTable {
 }
 
 #[derive(Clone, Debug)]
+pub struct UnitSelection(UnitOption);
+
+impl UnitSelection {
+    // TODO: move this to UnitTree, since its the only one using it and use
+    // UnitOption directly instead.
+    fn name(&self) -> String {
+        match &self.0 {
+            UnitOption::Unit(unit) => unit.name.clone(),
+            UnitOption::Random { nation, utype } => {
+                // TODO: cleanup, will want to add more filters later
+                match (nation, utype) {
+                    (Some(nation), Some(utype)) => format!("<RANDOM {nation} {utype}>"),
+                    (Some(nation), None) => format!("<RANDOM {nation}>"),
+                    (None, Some(utype)) => format!("<RANDOM {utype}>"),
+                    (None, None) => "<RANDOM>".into(),
+                }
+            }
+        }
+    }
+}
+
+impl From<UnitSelection> for UnitOption {
+    fn from(value: UnitSelection) -> Self {
+        value.0
+    }
+}
+
+#[derive(Clone, Debug)]
 pub enum UnitTreeItem {
     Unit(UnitSelection),
     Formation(usize),
@@ -175,14 +202,14 @@ impl UnitTree {
 
     pub fn with_selection(mut self, selection: UnitTreeSelection) -> Self {
         for unit in selection.units {
-            self.add_unit(unit);
+            self.add_unit(unit.0);
         }
 
         for formation in selection.formations {
             self.add_formation();
             // FIXME: can use recursion for this
             for unit in formation {
-                self.add_unit(unit);
+                self.add_unit(unit.0);
             }
         }
 
@@ -211,7 +238,7 @@ impl UnitTree {
 
     /// Add a unit to the tree, this will either be top level or if part of a
     /// formation if previously defined.
-    pub fn add_unit(&mut self, unit: UnitSelection) {
+    pub fn add_unit(&mut self, unit: UnitOption) {
         let insert_at = self.view.row().unwrap_or(0);
         let placement = self
             .view
@@ -226,7 +253,11 @@ impl UnitTree {
             .unwrap_or(Placement::After);
         let n = self
             .view
-            .insert_item(UnitTreeItem::Unit(unit), placement, insert_at)
+            .insert_item(
+                UnitTreeItem::Unit(UnitSelection(unit)),
+                placement,
+                insert_at,
+            )
             .unwrap_or(0);
         // select newly inserted row
         self.view.set_selected_row(n);
