@@ -157,4 +157,64 @@ mod tests {
         assert_eq!(unit1.cmp(&unit2, UnitColumn::Type), Ordering::Less);
         assert_eq!(unit2.cmp(&unit1, UnitColumn::Type), Ordering::Greater);
     }
+
+    fn assert_eq_table(table: &UnitTable, row: usize, unit: &db::Unit) {
+        assert_eq!(
+            table.borrow_item(row).map(|u| u.id.clone()),
+            Some(unit.id.clone())
+        );
+    }
+
+    #[test]
+    fn unit_table_borrow_item() {
+        let units: Vec<db::Unit> = (0..3).map(|_| fake_unit()).collect();
+        let table = UnitTable::new(units.clone());
+        // order should be preserved
+        for (row, unit) in units.iter().enumerate() {
+            assert_eq_table(&table, row, unit);
+        }
+        // nothing to borrow past end of list
+        assert_eq!(table.borrow_item(units.len()).map(|u| u.id.clone()), None);
+    }
+
+    #[test]
+    fn unit_table_filter() {
+        let units: Vec<db::Unit> = (0..3).map(|_| fake_unit()).collect();
+        let mut table = UnitTable::new(units.clone());
+
+        let nation = &units[0].nation.to_string();
+        let utype = &units[0].utype.to_string();
+
+        // table should remain the same
+        table.filter("<ALL>", "<ALL>");
+        assert!(table.borrow_item(units.len() - 1).is_some());
+
+        // only one nation
+        table.filter(nation, "<ALL>");
+        for (row, unit) in units.iter().enumerate() {
+            if unit.nation.to_string() == *nation {
+                assert_eq_table(&table, row, &unit);
+            }
+        }
+
+        // only one type
+        table.filter("<ALL>", utype);
+        for (row, unit) in units.iter().enumerate() {
+            if unit.utype.to_string() == *utype {
+                assert_eq_table(&table, row, &unit);
+            }
+        }
+
+        // both nation and type
+        table.filter(nation, utype);
+        for (row, unit) in units.iter().enumerate() {
+            if unit.nation.to_string() == *nation && unit.utype.to_string() == *utype {
+                assert_eq_table(&table, row, &unit);
+            }
+        }
+
+        // neither
+        table.filter("MISSING", "MISSING");
+        assert!(table.borrow_item(0).is_none());
+    }
 }
