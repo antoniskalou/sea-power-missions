@@ -7,30 +7,30 @@ use thiserror::Error;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum UnitType {
-    Ship,
+    Aircraft,
     Submarine,
     Helicopter,
-    FixedWing,
+    Vessel,
 }
 
 impl UnitType {
     pub fn all() -> [Self; 4] {
         use UnitType::*;
-        [Ship, Submarine, Helicopter, FixedWing]
+        [Vessel, Submarine, Helicopter, Aircraft]
     }
 
     pub fn capitalised_singular(&self) -> String {
         let str = match self {
-            Self::Ship => "Vessel",
+            Self::Vessel => "Vessel",
             Self::Submarine => "Submarine",
-            Self::FixedWing => "Aircraft",
+            Self::Aircraft => "Aircraft",
             Self::Helicopter => "Helicopter",
         };
         str.to_owned()
     }
 
     pub fn calitalised_plural(&self) -> String {
-        if *self == Self::FixedWing {
+        if *self == Self::Aircraft {
             "Aircraft".to_owned()
         } else {
             format!("{}s", self.capitalised_singular())
@@ -53,10 +53,10 @@ impl TryFrom<String> for UnitType {
 
     fn try_from(utype: String) -> Result<Self, Self::Error> {
         match utype.to_lowercase().as_str() {
-            "vessel" => Ok(Self::Ship),
+            "vessel" => Ok(Self::Vessel),
             "submarine" => Ok(Self::Submarine),
             "helicopter" => Ok(Self::Helicopter),
-            "aircraft" => Ok(Self::FixedWing),
+            "aircraft" => Ok(Self::Aircraft),
             _ => Err(UnknownUnitTypeError(utype.to_owned())),
         }
     }

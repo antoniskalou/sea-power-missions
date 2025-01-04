@@ -149,11 +149,11 @@ mod tests {
         let mut unit1 = fake_unit();
         let mut unit2 = fake_unit();
 
-        unit1.utype = db::UnitType::FixedWing;
-        unit2.utype = db::UnitType::FixedWing;
+        unit1.utype = db::UnitType::Aircraft;
+        unit2.utype = db::UnitType::Aircraft;
         assert_eq!(unit1.cmp(&unit2, UnitColumn::Type), Ordering::Equal);
 
-        unit2.utype = db::UnitType::Ship;
+        unit2.utype = db::UnitType::Vessel;
         assert_eq!(unit1.cmp(&unit2, UnitColumn::Type), Ordering::Less);
         assert_eq!(unit2.cmp(&unit1, UnitColumn::Type), Ordering::Greater);
     }
