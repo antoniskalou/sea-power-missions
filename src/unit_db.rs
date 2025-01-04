@@ -11,9 +11,6 @@ pub enum UnitType {
     Submarine,
     Helicopter,
     FixedWing,
-    // TODO: figure out if this is necessary,
-    // also consider using Option<VesselType>
-    Unknown,
 }
 
 impl UnitType {
@@ -28,7 +25,6 @@ impl UnitType {
             Self::Submarine => "Submarine",
             Self::FixedWing => "Aircraft",
             Self::Helicopter => "Helicopter",
-            Self::Unknown => panic!("unknown UnitType can not be coverted to string"),
         };
         str.to_owned()
     }
@@ -42,14 +38,20 @@ impl UnitType {
     }
 }
 
-impl From<String> for UnitType {
-    fn from(value: String) -> Self {
-        match value.to_lowercase().as_str() {
-            "vessel" => Self::Ship,
-            "submarine" => Self::Submarine,
-            "helicopter" => Self::Helicopter,
-            "aircraft" => Self::FixedWing,
-            _ => Self::Unknown,
+#[derive(Debug, Error)]
+#[error("unknown unit type {0}")]
+pub struct UnknownUnitTypeError(String);
+
+impl TryFrom<String> for UnitType {
+    type Error = UnknownUnitTypeError;
+
+    fn try_from(utype: String) -> Result<Self, Self::Error> {
+        match utype.to_lowercase().as_str() {
+            "vessel" => Ok(Self::Ship),
+            "submarine" => Ok(Self::Submarine),
+            "helicopter" => Ok(Self::Helicopter),
+            "aircraft" => Ok(Self::FixedWing),
+            _ => Err(UnknownUnitTypeError(utype.to_owned())),
         }
     }
 }
@@ -229,10 +231,14 @@ fn load_vessels(nations: &HashMap<String, Nation>) -> Result<HashMap<String, Uni
         };
 
         let config = load_ini(&path)?;
-        let utype = config
+
+        let utype = match config
             .get("General", "UnitType")
-            .map(UnitType::from)
-            .unwrap_or(UnitType::Unknown);
+            .and_then(|utype| UnitType::try_from(utype).ok())
+        {
+            Some(utype) => utype,
+            None => continue, // skip invalid types
+        };
 
         vessels.insert(
             id.clone(),
