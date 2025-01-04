@@ -38,6 +38,12 @@ impl UnitType {
     }
 }
 
+impl From<UnitType> for String {
+    fn from(utype: UnitType) -> Self {
+        utype.capitalised_singular()
+    }
+}
+
 #[derive(Debug, Error)]
 #[error("unknown unit type {0}")]
 pub struct UnknownUnitTypeError(String);

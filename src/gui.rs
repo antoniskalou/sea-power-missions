@@ -20,6 +20,8 @@ use views::{UnitTable, UnitTree, UnitTreeSelection};
 pub struct UnitSelection(UnitOption);
 
 impl UnitSelection {
+    // TODO: move this to UnitTree, since its the only one using it and use
+    // UnitOption directly instead.
     fn name(&self) -> String {
         match &self.0 {
             UnitOption::Unit(unit) => unit.name.clone(),
@@ -31,22 +33,6 @@ impl UnitSelection {
                     (None, Some(utype)) => format!("<RANDOM {utype}>"),
                     (None, None) => "<RANDOM>".into(),
                 }
-            }
-        }
-    }
-
-    fn nation(&self) -> String {
-        match &self.0 {
-            UnitOption::Unit(unit) => unit.nation.name.clone(),
-            UnitOption::Random { nation, .. } => nation.clone().unwrap_or("<RANDOM>".into()),
-        }
-    }
-
-    fn utype(&self) -> String {
-        match &self.0 {
-            UnitOption::Unit(unit) => unit.utype.to_string(),
-            UnitOption::Random { utype, .. } => {
-                utype.map_or("RANDOM".into(), |utype| utype.to_string())
             }
         }
     }
@@ -351,7 +337,7 @@ where
                 SelectView::new()
                     .popup()
                     .item_str("<ANY>")
-                    // .with_all_str(UnitType::all())
+                    .with_all_str(UnitType::all())
                     .with_name("random_type")
                     .max_width(20),
             ),
