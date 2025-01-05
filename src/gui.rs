@@ -14,7 +14,6 @@ use cursive::views::{
 };
 use cursive::Cursive;
 
-use itertools::Itertools;
 use views::{DefaultSelectView, UnitTable, UnitTree, UnitTreeSelection};
 
 #[derive(Clone, Debug)]
