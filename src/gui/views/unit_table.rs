@@ -27,12 +27,22 @@ impl UnitTable {
     }
 
     /// Filter units by nation or type.
-    pub fn filter(&mut self, nation: &str, utype: &str) {
+    pub fn filter(&mut self, nation: &Option<String>, utype: &Option<String>) {
         self.view.set_items(
             self.all_units
                 .iter()
-                .filter(|unit| nation == "<ALL>" || nation == unit.nation.name)
-                .filter(|unit| utype == "<ALL>" || utype == unit.utype.to_string())
+                .filter(|unit| {
+                    nation
+                        .as_ref()
+                        .map(|n| *n == unit.nation.to_string())
+                        .unwrap_or(true)
+                })
+                .filter(|unit| {
+                    utype
+                        .as_ref()
+                        .map(|t| *t == unit.utype.to_string())
+                        .unwrap_or(true)
+                })
                 .cloned()
                 .collect(),
         );
@@ -76,10 +86,7 @@ impl TableViewItem<UnitColumn> for db::Unit {
         }
     }
 
-    fn cmp(&self, other: &Self, column: UnitColumn) -> std::cmp::Ordering
-    where
-        Self: Sized,
-    {
+    fn cmp(&self, other: &Self, column: UnitColumn) -> std::cmp::Ordering {
         match column {
             UnitColumn::Name => self.name.cmp(&other.name),
             UnitColumn::Nation => self.nation.name.cmp(&other.nation.name),

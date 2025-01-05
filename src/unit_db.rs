@@ -87,6 +87,7 @@ impl std::fmt::Display for Nation {
 
 // normally this wouldnjt be required, since std::fmt::Display covers that use-case,
 // but cursive_tree_view insists of needing this
+// FIXME: shouldn't need to use &, or even exist for that matter
 impl From<&Nation> for String {
     fn from(value: &Nation) -> Self {
         value.to_string()

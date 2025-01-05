@@ -198,21 +198,24 @@ where
         }));
     }
 
-    fn filter(s: &mut Cursive, _item: &str) {
+    fn filter<T>(s: &mut Cursive, _item: &Option<T>) {
         let nation = s
-            .find_name::<SelectView>("filter_nation")
+            .find_name::<SelectView<Option<Nation>>>("filter_nation")
             .expect("missing filter_nation view")
             .selection()
             // FIXME
             .unwrap();
         let utype = s
-            .find_name::<SelectView>("filter_utype")
+            .find_name::<SelectView<Option<UnitType>>>("filter_utype")
             .expect("missing filter_utype view")
             .selection()
             .unwrap();
 
         s.call_on_name("available", |available: &mut UnitTable| {
-            available.filter(&nation, &utype);
+            // FIXME: horrible
+            let nation_str: Option<String> = nation.as_ref().clone().map(|n| Into::into(&n));
+            let utype_str: Option<String> = utype.as_ref().map(|u| Into::into(u));
+            available.filter(&nation_str, &utype_str);
         });
     }
 
@@ -222,8 +225,14 @@ where
                 "Nation",
                 SelectView::new()
                     .popup()
-                    .item_str("<ALL>")
-                    .with_all_str(state.nations.iter())
+                    .item("<ALL>", None)
+                    .with_all(
+                        state
+                            .nations
+                            .iter()
+                            .cloned()
+                            .map(|nation| (nation.to_string(), Some(nation))),
+                    )
                     .on_submit(filter)
                     .with_name("filter_nation")
                     .max_width(20),
@@ -232,8 +241,12 @@ where
                 "Type",
                 SelectView::new()
                     .popup()
-                    .item_str("<ALL>")
-                    .with_all_str(UnitType::all())
+                    .item("<ALL>", None)
+                    .with_all(
+                        UnitType::all()
+                            .into_iter()
+                            .map(|utype| (utype.to_string(), Some(utype))),
+                    )
                     .on_submit(filter)
                     .with_name("filter_utype")
                     .max_width(20),
