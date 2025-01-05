@@ -14,7 +14,7 @@ use cursive::views::{
 };
 use cursive::Cursive;
 
-use views::{UnitTable, UnitTree, UnitTreeSelection};
+use views::{DefaultSelectView, UnitTable, UnitTree, UnitTreeSelection};
 
 #[derive(Clone, Debug)]
 struct AppState {
@@ -200,22 +200,18 @@ where
 
     fn filter<T>(s: &mut Cursive, _item: &Option<T>) {
         let nation = s
-            .find_name::<SelectView<Option<Nation>>>("filter_nation")
+            .find_name::<DefaultSelectView<Nation>>("filter_nation")
             .expect("missing filter_nation view")
-            .selection()
-            // FIXME
-            .unwrap();
+            .selection();
         let utype = s
-            .find_name::<SelectView<Option<UnitType>>>("filter_utype")
+            .find_name::<DefaultSelectView<UnitType>>("filter_utype")
             .expect("missing filter_utype view")
-            .selection()
-            .unwrap();
+            .selection();
 
         s.call_on_name("available", |available: &mut UnitTable| {
-            // FIXME: horrible
-            let nation_str: Option<String> = nation.as_ref().clone().map(|n| Into::into(&n));
-            let utype_str: Option<String> = utype.as_ref().map(|u| Into::into(u));
-            available.filter(&nation_str, &utype_str);
+            let nation_str = nation.map(|n| Into::into(&n));
+            let utype_str = utype.map(Into::into);
+            available.filter(nation_str, utype_str);
         });
     }
 
@@ -223,30 +219,18 @@ where
         ListView::new()
             .child(
                 "Nation",
-                SelectView::new()
+                DefaultSelectView::new("<ALL>")
                     .popup()
-                    .item("<ALL>", None)
-                    .with_all(
-                        state
-                            .nations
-                            .iter()
-                            .cloned()
-                            .map(|nation| (nation.to_string(), Some(nation))),
-                    )
+                    .with_all(state.nations.iter().cloned())
                     .on_submit(filter)
                     .with_name("filter_nation")
                     .max_width(20),
             )
             .child(
                 "Type",
-                SelectView::new()
+                DefaultSelectView::new("<ALL>")
                     .popup()
-                    .item("<ALL>", None)
-                    .with_all(
-                        UnitType::all()
-                            .into_iter()
-                            .map(|utype| (utype.to_string(), Some(utype))),
-                    )
+                    .with_all(UnitType::all().into_iter())
                     .on_submit(filter)
                     .with_name("filter_utype")
                     .max_width(20),

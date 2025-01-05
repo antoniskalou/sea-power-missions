@@ -27,7 +27,7 @@ impl UnitTable {
     }
 
     /// Filter units by nation or type.
-    pub fn filter(&mut self, nation: &Option<String>, utype: &Option<String>) {
+    pub fn filter(&mut self, nation: Option<String>, utype: Option<String>) {
         self.view.set_items(
             self.all_units
                 .iter()
