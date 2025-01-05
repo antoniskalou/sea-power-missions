@@ -96,13 +96,7 @@ where
     };
 
     let blue_form = ListView::new()
-        .child(
-            "Nation",
-            SelectView::new()
-                .popup()
-                // FIXME: remove civilian from selection
-                .with_all_str(state.nations.iter()),
-        )
+        .child("Nation", nation_select_view(&state.nations))
         .child(
             "Unit Groups",
             Button::new("Customise...", {
@@ -120,10 +114,7 @@ where
         );
 
     let red_form = ListView::new()
-        .child(
-            "Nation",
-            SelectView::new().popup().with_all_str(state.nations.iter()),
-        )
+        .child("Nation", nation_select_view(&state.nations))
         .child(
             "Unit Groups",
             Button::new("Customise...", {
@@ -209,8 +200,8 @@ where
             .selection();
 
         s.call_on_name("available", |available: &mut UnitTable| {
-            let nation_str = nation.map(|n| Into::into(&n));
-            let utype_str = utype.map(Into::into);
+            let nation_str = nation.map(|n| n.to_string());
+            let utype_str = utype.map(|n| n.to_string());
             available.filter(nation_str, utype_str);
         });
     }
@@ -291,29 +282,31 @@ where
         ListView::new()
             .child(
                 "Nation",
-                SelectView::new()
+                DefaultSelectView::new("<ANY>")
                     .popup()
-                    .item_str("<ANY>")
-                    .with_all_str(state.nations.iter())
+                    .with_all(state.nations.iter().cloned())
                     .with_name("random_nation")
                     .max_width(20),
             )
             .child(
                 "Type",
-                SelectView::new()
+                DefaultSelectView::new("<ANY>")
                     .popup()
-                    .item_str("<ANY>")
-                    .with_all_str(UnitType::all())
+                    .with_all(UnitType::all().into_iter())
                     .with_name("random_type")
                     .max_width(20),
             ),
     )
     .button("Create", move |s| {
         let nation = s
-            .call_on_name("random_nation", |view: &mut SelectView| view.selection())
+            .call_on_name("random_nation", |view: &mut DefaultSelectView| {
+                view.selection()
+            })
             .expect("missing random_nation view");
         let utype = s
-            .call_on_name("random_type", |view: &mut SelectView| view.selection())
+            .call_on_name("random_type", |view: &mut DefaultSelectView| {
+                view.selection()
+            })
             .expect("missing random_type view");
         on_submit(s, &nation.unwrap(), &utype.unwrap());
         s.pop_layer();
@@ -321,6 +314,18 @@ where
     .button("Cancel", |s| {
         s.pop_layer();
     })
+}
+
+/// A `SelectView` of all nations, excluding civilian. It is intended to be
+/// be used for selecting a nation for red & blue, so civilian doesn't make
+/// sense.
+fn nation_select_view(nations: &[Nation]) -> SelectView {
+    SelectView::new().popup().with_all_str(
+        nations
+            .iter()
+            .filter(|n| n.id == "civ")
+            .map(|n| n.to_string()),
+    )
 }
 
 // Fill mission options based off what is currently in the UI.

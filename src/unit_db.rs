@@ -38,12 +38,9 @@ impl UnitType {
     }
 }
 
-// normally this wouldn't be required, since std::fmt::Display covers that use-case,
-// but cursive_tree_view insists of needing this
-// TODO: see if this is really true or if im just missing something
-impl From<UnitType> for String {
-    fn from(utype: UnitType) -> Self {
-        utype.capitalised_singular()
+impl std::fmt::Display for UnitType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.capitalised_singular())
     }
 }
 
@@ -65,12 +62,6 @@ impl TryFrom<String> for UnitType {
     }
 }
 
-impl std::fmt::Display for UnitType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.capitalised_singular())
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct Nation {
     pub id: String,
@@ -82,15 +73,6 @@ impl std::fmt::Display for Nation {
         // FIXME: it would be nice to provide a {name} ({id}), but I can't since it breaks
         // filter. Code from filter should not depend on the string intepretation.
         write!(f, "{}", self.name)
-    }
-}
-
-// normally this wouldnjt be required, since std::fmt::Display covers that use-case,
-// but cursive_tree_view insists of needing this
-// FIXME: shouldn't need to use &, or even exist for that matter
-impl From<&Nation> for String {
-    fn from(value: &Nation) -> Self {
-        value.to_string()
     }
 }
 
