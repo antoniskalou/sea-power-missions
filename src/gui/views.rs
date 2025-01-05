@@ -47,3 +47,19 @@ impl<T: Clone + Send + Sync + 'static> DefaultSelectView<T> {
 impl<T: Send + Sync + 'static> ViewWrapper for DefaultSelectView<T> {
     wrap_impl!(self.view: SelectView<Option<T>>);
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_selection() {
+        let view = DefaultSelectView::<u32>::new("<EMPTY>");
+        assert_eq!(view.selection(), None);
+
+        let mut view = DefaultSelectView::new("<EMPTY>").with_all(vec![1, 2, 3].into_iter());
+        assert_eq!(view.selection(), None); // defaults to none
+        view.view.set_selection(1);
+        assert_eq!(view.selection(), Some(1));
+    }
+}

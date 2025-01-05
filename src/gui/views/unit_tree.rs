@@ -9,9 +9,11 @@ use cursive_tree_view::{Placement, TreeView};
 
 #[derive(Clone, Debug)]
 pub struct UnitSelection {
+    // a UnitOption::Unit may have a count if we want to allow a user to
+    // create e.g. 10x a specific unit. I'd like in the future to have
+    // a feature where you can select a unit in the tree and press a keybind
+    // to increase or decrease the number vessels.
     unit: UnitOption,
-    // FIXME: this isn't a good representation as it doesn't make sense for a
-    // `UnitOption::Unit` to have a count.
     count: usize,
 }
 
@@ -21,23 +23,23 @@ impl UnitSelection {
     }
 
     fn name(&self) -> String {
-        match &self.unit {
+        let unit_str = match &self.unit {
             UnitOption::Unit(unit) => unit.name.clone(),
             UnitOption::Random { nation, utype } => {
                 // TODO: cleanup, will want to add more filters later
-                let base_str = match (nation, utype) {
+                match (nation, utype) {
                     (Some(nation), Some(utype)) => format!("<RANDOM {nation} {utype}>"),
                     (Some(nation), None) => format!("<RANDOM {nation}>"),
                     (None, Some(utype)) => format!("<RANDOM {utype}>"),
                     (None, None) => "<RANDOM>".into(),
-                };
-                // FIXME: clean this up
-                if self.count > 1 {
-                    format!("{base_str} x {}", self.count)
-                } else {
-                    base_str
                 }
             }
+        };
+
+        if self.count > 1 {
+            format!("{unit_str} x {}", self.count)
+        } else {
+            unit_str
         }
     }
 }
