@@ -29,6 +29,7 @@ impl std::fmt::Display for WeaponState {
 pub enum UnitOption {
     Unit(db::Unit),
     Random {
+        // FIXME: make Option<Nation>
         nation: Option<String>,
         utype: Option<UnitType>,
     },

@@ -7,7 +7,7 @@ pub use unit_tree::{UnitTree, UnitTreeSelection};
 
 /// Same as `SelectView`, except it allows a sentinel value as a default
 /// option if none is selected
-pub struct DefaultSelectView<T = String> {
+pub struct DefaultSelectView<T> {
     view: SelectView<Option<T>>,
 }
 

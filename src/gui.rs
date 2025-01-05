@@ -184,8 +184,17 @@ where
     }
 
     fn add_random(s: &mut Cursive, state: AppState) {
-        s.add_layer(random_unit_view(&state, |_, nation, utype| {
-            info!("nation: {nation}, utype: {utype}");
+        s.add_layer(random_unit_view(&state, |s, nation, utype| {
+            info!("nation: {nation:?}, utype: {utype:?}");
+            s.call_on_name("selected", |selected: &mut UnitTree| {
+                let utype = utype.clone().map(|u| {
+                    UnitType::try_from(u).expect("invalid utype returned from `selected`")
+                });
+                selected.add_unit(UnitOption::Random {
+                    nation: nation.clone(),
+                    utype,
+                })
+            });
         }));
     }
 
@@ -276,7 +285,7 @@ where
 fn random_unit_view<F>(state: &AppState, on_submit: F) -> impl View
 where
     // FIXME: calls with &str, we want &Nation & &UnitType
-    F: Fn(&mut Cursive, &str, &str) + Send + Sync + 'static,
+    F: Fn(&mut Cursive, &Option<String>, &Option<String>) + Send + Sync + 'static,
 {
     Dialog::around(
         ListView::new()
@@ -295,20 +304,28 @@ where
                     .with_all(UnitType::all().into_iter())
                     .with_name("random_type")
                     .max_width(20),
+            )
+            .child(
+                "Number",
+                EditView::new()
+                    .content(1.to_string())
+                    .max_content_width(3)
+                    .with_name("random_number")
+                    .fixed_width(4),
             ),
     )
     .button("Create", move |s| {
         let nation = s
-            .call_on_name("random_nation", |view: &mut DefaultSelectView| {
-                view.selection()
+            .call_on_name("random_nation", |view: &mut DefaultSelectView<Nation>| {
+                view.selection().map(|n| n.to_string())
             })
             .expect("missing random_nation view");
         let utype = s
-            .call_on_name("random_type", |view: &mut DefaultSelectView| {
-                view.selection()
+            .call_on_name("random_type", |view: &mut DefaultSelectView<UnitType>| {
+                view.selection().map(|u| u.to_string())
             })
             .expect("missing random_type view");
-        on_submit(s, &nation.unwrap(), &utype.unwrap());
+        on_submit(s, &nation, &utype);
         s.pop_layer();
     })
     .button("Cancel", |s| {
