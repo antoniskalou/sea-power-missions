@@ -14,6 +14,7 @@ use cursive::views::{
 };
 use cursive::Cursive;
 
+use itertools::Itertools;
 use views::{DefaultSelectView, UnitTable, UnitTree, UnitTreeSelection};
 
 #[derive(Clone, Debug)]
@@ -201,8 +202,8 @@ where
 
         s.call_on_name("available", |available: &mut UnitTable| {
             let nation_str = nation.map(|n| n.to_string());
-            let utype_str = utype.map(|n| n.to_string());
-            available.filter(nation_str, utype_str);
+            let utype_str = utype.map(|u| u.to_string());
+            available.filter(nation_str.as_deref(), utype_str.as_deref());
         });
     }
 

@@ -27,22 +27,12 @@ impl UnitTable {
     }
 
     /// Filter units by nation or type.
-    pub fn filter(&mut self, nation: Option<String>, utype: Option<String>) {
+    pub fn filter(&mut self, nation: Option<&str>, utype: Option<&str>) {
         self.view.set_items(
             self.all_units
                 .iter()
-                .filter(|unit| {
-                    nation
-                        .as_ref()
-                        .map(|n| *n == unit.nation.to_string())
-                        .unwrap_or(true)
-                })
-                .filter(|unit| {
-                    utype
-                        .as_ref()
-                        .map(|t| *t == unit.utype.to_string())
-                        .unwrap_or(true)
-                })
+                .filter(|unit| nation.map(|n| n == unit.nation.to_string()).unwrap_or(true))
+                .filter(|unit| utype.map(|t| t == unit.utype.to_string()).unwrap_or(true))
                 .cloned()
                 .collect(),
         );
@@ -193,11 +183,11 @@ mod tests {
         let utype = &units[0].utype.to_string();
 
         // table should remain the same
-        table.filter("<ALL>", "<ALL>");
+        table.filter(None, None);
         assert!(table.borrow_item(units.len() - 1).is_some());
 
         // only one nation
-        table.filter(nation, "<ALL>");
+        table.filter(Some(nation), None);
         for (row, unit) in units.iter().enumerate() {
             if unit.nation.to_string() == *nation {
                 assert_eq_table(&table, row, &unit);
@@ -205,7 +195,7 @@ mod tests {
         }
 
         // only one type
-        table.filter("<ALL>", utype);
+        table.filter(None, Some(utype));
         for (row, unit) in units.iter().enumerate() {
             if unit.utype.to_string() == *utype {
                 assert_eq_table(&table, row, &unit);
@@ -213,7 +203,7 @@ mod tests {
         }
 
         // both nation and type
-        table.filter(nation, utype);
+        table.filter(Some(nation), Some(utype));
         for (row, unit) in units.iter().enumerate() {
             if unit.nation.to_string() == *nation && unit.utype.to_string() == *utype {
                 assert_eq_table(&table, row, &unit);
@@ -221,7 +211,7 @@ mod tests {
         }
 
         // neither
-        table.filter("MISSING", "MISSING");
+        table.filter(Some("MISSING"), Some("MISSING"));
         assert!(table.borrow_item(0).is_none());
     }
 }
