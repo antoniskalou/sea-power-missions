@@ -15,5 +15,9 @@ cursive = "0.21"
 cursive_table_view = "0.15"
 cursive_tree_view = "0.9"
 
+[target.'cfg(windows)'.dependencies]
+# WinAPI
+winreg = "0.52"
+
 [dev-dependencies]
 fake = "3.1.0"

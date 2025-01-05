@@ -20,6 +20,13 @@ fn load_template() -> Result<Ini, String> {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
+    eprintln!(
+        "Detected root game folder: {}",
+        dir::root_dir()
+            .to_str()
+            .expect("invalid root directory path")
+    );
+
     let unit_db = Arc::new(UnitDb::new().expect("failed to initialise UnitDB"));
 
     gui::App::new(&unit_db).run({
