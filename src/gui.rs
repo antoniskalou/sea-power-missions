@@ -323,7 +323,7 @@ fn nation_select_view(nations: &[Nation]) -> SelectView {
     SelectView::new().popup().with_all_str(
         nations
             .iter()
-            .filter(|n| n.id == "civ")
+            .filter(|n| n.id != "civ")
             .map(|n| n.to_string()),
     )
 }
