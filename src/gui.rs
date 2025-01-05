@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use crate::mission::{self, MissionOptions, TaskforceOptions, UnitOption};
 use crate::unit_db::{Nation, Unit, UnitDb, UnitType};
 
-use cursive::reexports::log::{info, LevelFilter};
+use cursive::reexports::log::LevelFilter;
 use cursive::traits::*;
 use cursive::views::{
     Button, Dialog, DummyView, EditView, LinearLayout, ListView, Panel, ResizedView, SelectView,
@@ -184,16 +184,18 @@ where
     }
 
     fn add_random(s: &mut Cursive, state: AppState) {
-        s.add_layer(random_unit_view(&state, |s, nation, utype| {
-            info!("nation: {nation:?}, utype: {utype:?}");
+        s.add_layer(random_unit_view(&state, |s, nation, utype, count| {
             s.call_on_name("selected", |selected: &mut UnitTree| {
                 let utype = utype.clone().map(|u| {
                     UnitType::try_from(u).expect("invalid utype returned from `selected`")
                 });
-                selected.add_unit(UnitOption::Random {
-                    nation: nation.clone(),
-                    utype,
-                })
+                selected.add_n_units(
+                    UnitOption::Random {
+                        nation: nation.clone(),
+                        utype,
+                    },
+                    count,
+                )
             });
         }));
     }
@@ -285,7 +287,7 @@ where
 fn random_unit_view<F>(state: &AppState, on_submit: F) -> impl View
 where
     // FIXME: calls with &str, we want &Nation & &UnitType
-    F: Fn(&mut Cursive, &Option<String>, &Option<String>) + Send + Sync + 'static,
+    F: Fn(&mut Cursive, &Option<String>, &Option<String>, usize) + Send + Sync + 'static,
 {
     Dialog::around(
         ListView::new()
@@ -310,7 +312,7 @@ where
                 EditView::new()
                     .content(1.to_string())
                     .max_content_width(3)
-                    .with_name("random_number")
+                    .with_name("random_count")
                     .fixed_width(4),
             ),
     )
@@ -325,7 +327,13 @@ where
                 view.selection().map(|u| u.to_string())
             })
             .expect("missing random_type view");
-        on_submit(s, &nation, &utype);
+        let count = s
+            .call_on_name("random_count", |view: &mut EditView| {
+                // TODO: input validation
+                view.get_content().parse().expect("parse of count failed")
+            })
+            .expect("missing random_count view");
+        on_submit(s, &nation, &utype, count);
         s.pop_layer();
     })
     .button("Cancel", |s| {

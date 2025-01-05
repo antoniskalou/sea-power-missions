@@ -8,19 +8,34 @@ use cursive::{view::ViewWrapper, Cursive};
 use cursive_tree_view::{Placement, TreeView};
 
 #[derive(Clone, Debug)]
-pub struct UnitSelection(UnitOption);
+pub struct UnitSelection {
+    unit: UnitOption,
+    // FIXME: this isn't a good representation as it doesn't make sense for a
+    // `UnitOption::Unit` to have a count.
+    count: usize,
+}
 
 impl UnitSelection {
+    fn new(unit: UnitOption) -> Self {
+        Self { unit, count: 1 }
+    }
+
     fn name(&self) -> String {
-        match &self.0 {
+        match &self.unit {
             UnitOption::Unit(unit) => unit.name.clone(),
             UnitOption::Random { nation, utype } => {
                 // TODO: cleanup, will want to add more filters later
-                match (nation, utype) {
+                let base_str = match (nation, utype) {
                     (Some(nation), Some(utype)) => format!("<RANDOM {nation} {utype}>"),
                     (Some(nation), None) => format!("<RANDOM {nation}>"),
                     (None, Some(utype)) => format!("<RANDOM {utype}>"),
                     (None, None) => "<RANDOM>".into(),
+                };
+                // FIXME: clean this up
+                if self.count > 1 {
+                    format!("{base_str} x {}", self.count)
+                } else {
+                    base_str
                 }
             }
         }
@@ -29,7 +44,7 @@ impl UnitSelection {
 
 impl From<UnitSelection> for UnitOption {
     fn from(value: UnitSelection) -> Self {
-        value.0
+        value.unit
     }
 }
 
@@ -91,7 +106,7 @@ impl From<&TaskforceOptions> for UnitTreeSelection {
 }
 
 fn options_to_units(opts: &[UnitOption]) -> Vec<UnitSelection> {
-    opts.iter().cloned().map(UnitSelection).collect()
+    opts.iter().cloned().map(UnitSelection::new).collect()
 }
 
 fn units_to_options(units: &[UnitSelection]) -> Vec<UnitOption> {
@@ -114,14 +129,14 @@ impl UnitTree {
 
     pub fn with_selection(mut self, selection: UnitTreeSelection) -> Self {
         for unit in selection.units {
-            self.add_unit(unit.0);
+            self.add_unit(unit.unit);
         }
 
         for formation in selection.formations {
             self.add_formation();
             // FIXME: can use recursion for this
             for unit in formation {
-                self.add_unit(unit.0);
+                self.add_unit(unit.unit);
             }
         }
 
@@ -148,9 +163,7 @@ impl UnitTree {
         self
     }
 
-    /// Add a unit to the tree, this will either be top level or if part of a
-    /// formation if previously defined.
-    pub fn add_unit(&mut self, unit: UnitOption) {
+    fn add_unit_selection(&mut self, selection: UnitSelection) {
         let insert_at = self.view.row().unwrap_or(0);
         let placement = self
             .view
@@ -165,14 +178,20 @@ impl UnitTree {
             .unwrap_or(Placement::After);
         let n = self
             .view
-            .insert_item(
-                UnitTreeItem::Unit(UnitSelection(unit)),
-                placement,
-                insert_at,
-            )
+            .insert_item(UnitTreeItem::Unit(selection), placement, insert_at)
             .unwrap_or(0);
         // select newly inserted row
         self.view.set_selected_row(n);
+    }
+
+    /// Add a unit to the tree, this will either be top level or if part of a
+    /// formation if previously defined.
+    pub fn add_unit(&mut self, unit: UnitOption) {
+        self.add_unit_selection(UnitSelection::new(unit))
+    }
+
+    pub fn add_n_units(&mut self, unit: UnitOption, count: usize) {
+        self.add_unit_selection(UnitSelection { unit, count })
     }
 
     /// Add a formation to the tree, any units added after this will be added
