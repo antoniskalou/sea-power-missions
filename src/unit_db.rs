@@ -72,7 +72,7 @@ impl std::fmt::Display for Nation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // FIXME: it would be nice to provide a {name} ({id}), but I can't since it breaks
         // filter. Code from filter should not depend on the string intepretation.
-        write!(f, "{}", self.name)
+        write!(f, "{}", self.name.trim())
     }
 }
 

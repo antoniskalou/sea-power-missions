@@ -320,12 +320,16 @@ where
 /// be used for selecting a nation for red & blue, so civilian doesn't make
 /// sense.
 fn nation_select_view(nations: &[Nation]) -> SelectView {
-    SelectView::new().popup().with_all_str(
-        nations
-            .iter()
-            .filter(|n| n.id != "civ")
-            .map(|n| n.to_string()),
-    )
+    let mut nations: Vec<String> = nations
+        .iter()
+        .filter(|n| n.id != "civ")
+        .map(|n| n.to_string())
+        .collect();
+    // NOTE: we need to sort before dedup, otherwise dedup won't remove all
+    // elements properly.
+    nations.sort();
+    nations.dedup();
+    SelectView::new().popup().with_all_str(nations.iter())
 }
 
 // Fill mission options based off what is currently in the UI.
