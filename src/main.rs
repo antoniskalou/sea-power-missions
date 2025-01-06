@@ -20,14 +20,15 @@ fn load_template() -> Result<Ini, String> {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
+    // TODO: if not found, create a dialog with cursive and ask for input, then
+    // update the game config file
+    let root_dir = dir::root_dir().expect("could not find game folder");
     eprintln!(
-        "Detected root game folder: {}",
-        dir::root_dir()
-            .to_str()
-            .expect("invalid root directory path")
+        "Detected game folder: {}",
+        root_dir.to_str().expect("invalid root directory path")
     );
 
-    let unit_db = Arc::new(UnitDb::new().expect("failed to initialise UnitDB"));
+    let unit_db = Arc::new(UnitDb::new(&root_dir).expect("failed to initialise UnitDB"));
 
     gui::App::new(&unit_db).run({
         let unit_db = unit_db.clone();
@@ -38,7 +39,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             let mut config = load_template().expect("load template failed");
             mission.write_ini(&mut config);
 
-            let mission_path = dir::mission_dir().join("Random Mission.ini");
+            let mission_path = dir::mission_dir(&root_dir).join("Random Mission.ini");
             config.write(mission_path).expect("config write failed");
         }
     });

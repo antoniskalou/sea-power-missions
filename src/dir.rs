@@ -10,25 +10,27 @@ const ORIGINAL_DIR: &str = r"Sea Power_Data\StreamingAssets\original";
 const AIRCRAFT_DIR: &str = "aircraft";
 const VESSEL_DIR: &str = "vessels";
 
-pub fn root_dir() -> PathBuf {
-    // TODO: first try and load from app config
-    try_load_config().or_else(check_known_locations).unwrap()
+// TODO: return result with useful error
+pub fn root_dir() -> Option<PathBuf> {
+    // save to app config if check_know_locations returns something
+    // and app config doesn't exist
+    try_load_config().or_else(check_known_locations)
 }
 
-pub fn mission_dir() -> PathBuf {
-    root_dir().join(MISSION_DIR)
+pub fn mission_dir(root_dir: &Path) -> PathBuf {
+    root_dir.join(MISSION_DIR)
 }
 
-pub fn original_dir() -> PathBuf {
-    root_dir().join(ORIGINAL_DIR)
+pub fn original_dir(root_dir: &Path) -> PathBuf {
+    root_dir.join(ORIGINAL_DIR)
 }
 
-pub fn aircraft_dir() -> PathBuf {
-    original_dir().join(AIRCRAFT_DIR)
+pub fn aircraft_dir(root_dir: &Path) -> PathBuf {
+    original_dir(root_dir).join(AIRCRAFT_DIR)
 }
 
-pub fn vessel_dir() -> PathBuf {
-    original_dir().join(VESSEL_DIR)
+pub fn vessel_dir(root_dir: &Path) -> PathBuf {
+    original_dir(root_dir).join(VESSEL_DIR)
 }
 
 fn try_load_config() -> Option<PathBuf> {
@@ -45,6 +47,7 @@ fn check_known_locations() -> Option<PathBuf> {
     let default_paths = vec![
         r"C:\Program Files\Sea Power",
         r"C:\Program Files (x86)\Sea Power",
+        r"C:\Games\Sea Power",
         r"D:\Games\Sea Power",
     ];
 

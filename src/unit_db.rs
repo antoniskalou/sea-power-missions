@@ -101,11 +101,11 @@ pub struct UnitDb {
 }
 
 impl UnitDb {
-    pub fn new() -> Result<Self, UnitDbError> {
-        let nations = load_nation_reference()?;
+    pub fn new(root_dir: &Path) -> Result<Self, UnitDbError> {
+        let nations = load_nation_reference(root_dir)?;
         let mut units = HashMap::new();
-        units.extend(load_vessels(&nations)?);
-        units.extend(load_aircraft()?);
+        units.extend(load_vessels(root_dir, &nations)?);
+        // units.extend(load_aircraft(root_dir)?);
         Ok(Self { nations, units })
     }
 
@@ -133,27 +133,9 @@ impl UnitDb {
     }
 }
 
-/// Sea Power encodes unit information in the filename, usually structured
-/// like <nation>_<vessel_name>
-fn path_to_id(path: &Path) -> Option<&str> {
-    path.file_stem().and_then(|p| p.to_str())
-}
-
-/// load a unit ini file
-fn load_ini(path: &Path) -> Result<Ini, UnitDbError> {
-    let mut config = Ini::new();
-
-    match config.load(path) {
-        Ok(_) => Ok(config),
-        Err(reason) => Err(UnitDbError::ParseError {
-            file: path.to_owned(),
-            reason,
-        }),
-    }
-}
-
-fn load_nation_reference() -> Result<HashMap<String, Nation>, UnitDbError> {
-    let config = load_ini(&dir::original_dir().join("nations_reference.ini"))?;
+fn load_nation_reference(root_dir: &Path) -> Result<HashMap<String, Nation>, UnitDbError> {
+    let config_file = dir::original_dir(root_dir).join("nations_reference.ini");
+    let config = load_ini(&config_file)?;
 
     let mut nations = HashMap::new();
     if let Some(map) = config.get_map() {
@@ -172,30 +154,14 @@ fn load_nation_reference() -> Result<HashMap<String, Nation>, UnitDbError> {
     Ok(nations)
 }
 
-fn split_name_parts(name: &str) -> Vec<&str> {
-    name.split(",").filter(|s| !s.is_empty()).collect()
-}
-
-fn load_vessel_names() -> Result<HashMap<String, String>, UnitDbError> {
-    let config = load_ini(&dir::original_dir().join("language_en/vessel_names.ini"))?;
-    let mut names = HashMap::new();
-    if let Some(map) = config.get_map() {
-        for (id, config) in map {
-            let default = config.get("default").and_then(|o| (*o).clone());
-            if let Some(name_parts) = default {
-                let name = split_name_parts(&name_parts)[0];
-                names.insert(id, name.to_string());
-            }
-        }
-    }
-    Ok(names)
-}
-
-fn load_vessels(nations: &HashMap<String, Nation>) -> Result<HashMap<String, Unit>, UnitDbError> {
-    let names = load_vessel_names()?;
+fn load_vessels(
+    root_dir: &Path,
+    nations: &HashMap<String, Nation>,
+) -> Result<HashMap<String, Unit>, UnitDbError> {
+    let names = load_vessel_names(root_dir)?;
     let mut vessels = HashMap::new();
 
-    for entry in fs::read_dir(dir::vessel_dir())? {
+    for entry in fs::read_dir(dir::vessel_dir(root_dir))? {
         let path = entry?.path();
         let id = match path_to_id(&path) {
             // skip storing variants for now, TODO
@@ -243,8 +209,47 @@ fn load_vessels(nations: &HashMap<String, Nation>) -> Result<HashMap<String, Uni
     Ok(vessels)
 }
 
+fn load_vessel_names(root_dir: &Path) -> Result<HashMap<String, String>, UnitDbError> {
+    let config_file = dir::original_dir(root_dir).join("language_en/vessel_names.ini");
+    let config = load_ini(&config_file)?;
+    let mut names = HashMap::new();
+    if let Some(map) = config.get_map() {
+        for (id, config) in map {
+            let default = config.get("default").and_then(|o| (*o).clone());
+            if let Some(name_parts) = default {
+                let name = split_name_parts(&name_parts)[0];
+                names.insert(id, name.to_string());
+            }
+        }
+    }
+    Ok(names)
+}
+
 fn load_aircraft() -> Result<HashMap<String, Unit>, UnitDbError> {
     Ok(HashMap::new())
+}
+
+/// Sea Power encodes unit information in the filename, usually structured
+/// like <nation>_<vessel_name>
+fn path_to_id(path: &Path) -> Option<&str> {
+    path.file_stem().and_then(|p| p.to_str())
+}
+
+/// load a unit ini file
+fn load_ini(path: &Path) -> Result<Ini, UnitDbError> {
+    let mut config = Ini::new();
+
+    match config.load(path) {
+        Ok(_) => Ok(config),
+        Err(reason) => Err(UnitDbError::ParseError {
+            file: path.to_owned(),
+            reason,
+        }),
+    }
+}
+
+fn split_name_parts(name: &str) -> Vec<&str> {
+    name.split(",").filter(|s| !s.is_empty()).collect()
 }
 
 #[cfg(test)]
