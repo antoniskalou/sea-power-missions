@@ -8,6 +8,8 @@ edition = "2021"
 [dependencies]
 thiserror = "2.0"
 rand = "0.8"
+# find common directories
+dirs = "5.0"
 # INI
 configparser = "3.1"
 # TUI

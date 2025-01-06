@@ -1,6 +1,8 @@
+use configparser::ini::Ini;
 use std::{
     fs,
     path::{Path, PathBuf},
+    str::FromStr,
 };
 
 const MISSION_DIR: &str = r"Sea Power_Data\StreamingAssets\user\missions";
@@ -10,7 +12,7 @@ const VESSEL_DIR: &str = "vessels";
 
 pub fn root_dir() -> PathBuf {
     // TODO: first try and load from app config
-    check_known_locations().or_else(recursive_search).unwrap()
+    try_load_config().or_else(check_known_locations).unwrap()
 }
 
 pub fn mission_dir() -> PathBuf {
@@ -27,6 +29,15 @@ pub fn aircraft_dir() -> PathBuf {
 
 pub fn vessel_dir() -> PathBuf {
     original_dir().join(VESSEL_DIR)
+}
+
+fn try_load_config() -> Option<PathBuf> {
+    let config_file = dirs::config_dir()?.join("spmg").join("config.ini");
+    let mut config = Ini::new();
+    config.load(config_file).ok()?;
+    config
+        .get("general", "game_path")
+        .and_then(|s| PathBuf::from_str(&s).ok())
 }
 
 fn check_known_locations() -> Option<PathBuf> {
@@ -97,8 +108,4 @@ fn check_registry_key(game_name: &str) -> Option<PathBuf> {
         .filter(|install_location| install_location.contains(game_name))
         .map(PathBuf::from)
         .find(|path| path.exists())
-}
-
-fn recursive_search() -> Option<PathBuf> {
-    None
 }
