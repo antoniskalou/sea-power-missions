@@ -87,9 +87,9 @@ pub struct Unit {
 #[derive(Error, Debug)]
 pub enum UnitDbError {
     #[error("failed to parse ini file {file}: {reason}")]
-    ParseError { file: PathBuf, reason: String },
+    IniParse { file: PathBuf, reason: String },
     #[error(transparent)]
-    IOError(#[from] io::Error),
+    Io(#[from] io::Error),
 }
 
 #[derive(Debug)]
@@ -241,7 +241,7 @@ fn load_ini(path: &Path) -> Result<Ini, UnitDbError> {
 
     match config.load(path) {
         Ok(_) => Ok(config),
-        Err(reason) => Err(UnitDbError::ParseError {
+        Err(reason) => Err(UnitDbError::IniParse {
             file: path.to_owned(),
             reason,
         }),
