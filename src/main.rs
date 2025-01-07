@@ -1,3 +1,4 @@
+mod config;
 mod dir;
 mod gui;
 mod mission;

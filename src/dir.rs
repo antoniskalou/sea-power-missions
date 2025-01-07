@@ -1,8 +1,7 @@
-use configparser::ini::Ini;
+use crate::config::Config;
 use std::{
     fs,
     path::{Path, PathBuf},
-    str::FromStr,
 };
 
 const MISSION_DIR: &str = r"Sea Power_Data\StreamingAssets\user\missions";
@@ -35,11 +34,12 @@ pub fn vessel_dir(root_dir: &Path) -> PathBuf {
 
 fn try_load_config() -> Option<PathBuf> {
     let config_file = dirs::config_dir()?.join("spmg").join("config.ini");
-    let mut config = Ini::new();
-    config.load(config_file).ok()?;
-    config
-        .get("general", "game_path")
-        .and_then(|s| PathBuf::from_str(&s).ok())
+    Config::load(&config_file)
+        .ok()
+        .map(|config| config.game_path)
+        // ignore if path doesn't actually exist, we can then find and reset
+        // the path later (from user input or known locations)
+        .filter(|path| path.exists())
 }
 
 fn check_known_locations() -> Option<PathBuf> {
@@ -108,7 +108,7 @@ fn check_registry_key(game_name: &str) -> Option<PathBuf> {
         .filter_map(|key| key.get_value::<String, _>("InstallLocation").ok());
 
     install_locations
-        .filter(|install_location| install_location.contains(game_name))
+        .filter(|location| location.contains(game_name))
         .map(PathBuf::from)
         .find(|path| path.exists())
 }
