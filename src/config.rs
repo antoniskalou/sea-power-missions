@@ -1,8 +1,9 @@
 use configparser::ini;
+use std::io;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
-#[derive(Error, Clone, Debug)]
+#[derive(Error, Debug)]
 pub enum ConfigLoadError {
     #[error("failed to parse ini file {path}: {reason}")]
     IniParse { path: PathBuf, reason: String },
@@ -10,16 +11,38 @@ pub enum ConfigLoadError {
     MissingKey { section: String, key: String },
 }
 
+#[derive(Error, Debug)]
+#[error("failed to write config file {path}: {source}")]
+pub struct ConfigWriteError {
+    path: PathBuf,
+    #[source]
+    source: io::Error,
+}
+
 #[derive(Clone, Debug)]
 pub struct Config {
-    pub game_path: PathBuf,
+    /// The path where Sea Power is located.
+    pub game_root: PathBuf,
 }
 
 impl Config {
+    pub fn new<P: AsRef<Path>>(game_root: P) -> Self {
+        Config {
+            game_root: game_root.as_ref().to_owned(),
+        }
+    }
+
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, ConfigLoadError> {
         let config = load_config(path.as_ref())?;
-        let game_path = fetch_key(&config, "general", "game_path")?.into();
-        Ok(Config { game_path })
+        let game_root = fetch_key(&config, "general", "game_root")?.into();
+        Ok(Config { game_root })
+    }
+
+    pub fn save<P: AsRef<Path>>(self, path: P) -> Result<(), ConfigWriteError> {
+        ini::Ini::new().write(&path).map_err(|e| ConfigWriteError {
+            path: path.as_ref().to_owned(),
+            source: e,
+        })
     }
 }
 

@@ -9,6 +9,14 @@ const ORIGINAL_DIR: &str = r"Sea Power_Data\StreamingAssets\original";
 const AIRCRAFT_DIR: &str = "aircraft";
 const VESSEL_DIR: &str = "vessels";
 
+pub fn config_dir() -> Option<PathBuf> {
+    Some(dirs::config_dir()?.join("spmg"))
+}
+
+pub fn config_file() -> Option<PathBuf> {
+    Some(config_dir()?.join("config.ini"))
+}
+
 // TODO: return result with useful error
 pub fn root_dir() -> Option<PathBuf> {
     // save to app config if check_know_locations returns something
@@ -33,13 +41,21 @@ pub fn vessel_dir(root_dir: &Path) -> PathBuf {
 }
 
 fn try_load_config() -> Option<PathBuf> {
-    let config_file = dirs::config_dir()?.join("spmg").join("config.ini");
-    Config::load(&config_file)
+    let config_file = config_file()?;
+    eprintln!("attempting to load config from {}", config_file.display());
+
+    let path = Config::load(&config_file)
         .ok()
-        .map(|config| config.game_path)
+        .map(|config| config.game_root)
         // ignore if path doesn't actually exist, we can then find and reset
         // the path later (from user input or known locations)
-        .filter(|path| path.exists())
+        .filter(|path| path.exists());
+
+    if path.is_none() {
+        eprintln!("\tFAILED")
+    }
+
+    path
 }
 
 fn check_known_locations() -> Option<PathBuf> {
@@ -51,21 +67,30 @@ fn check_known_locations() -> Option<PathBuf> {
         r"D:\Games\Sea Power",
     ];
 
+    eprintln!("checking known locations...");
     for path in default_paths {
+        eprintln!("\t{}", path);
         if Path::new(path).exists() {
             return Some(path.into());
         }
     }
+    eprintln!("\tFAILED");
 
     // maybe its in the steam folder?
+    eprintln!("checking steam path...");
     if let Some(steam_path) = detect_steam_game_folder("Sea Power") {
         return Some(steam_path);
     }
+    eprintln!("\tFAILED");
 
     // what about the registry?
     #[cfg(target_os = "windows")]
-    if let Some(registry_path) = check_registry_key("Sea Power") {
-        return Some(registry_path);
+    {
+        eprintln!("checking windows registry...");
+        if let Some(registry_path) = check_registry_key("Sea Power") {
+            return Some(registry_path);
+        }
+        eprintln!("\tFAILED");
     }
 
     // not found...
