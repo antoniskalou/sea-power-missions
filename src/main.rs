@@ -13,7 +13,7 @@ use mission::Mission;
 use std::error::Error;
 use std::path::PathBuf;
 use std::str;
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{Arc, Mutex};
 use unit_db::UnitDb;
 
 const MISSION_TEMPLATE: &str = include_str!("../resources/mission_template.ini");
@@ -41,8 +41,7 @@ fn load_config() -> Option<Config> {
 }
 
 fn ask_for_game_path() -> Config {
-    let (tx, rx) = mpsc::sync_channel(1);
-
+    let root = Arc::new(Mutex::new(None));
     let mut siv = cursive::default();
     siv.set_window_title("Sea Power Location Picker");
     siv.add_layer(
@@ -54,10 +53,10 @@ fn ask_for_game_path() -> Config {
                 .child(EditView::new().with_name("path")),
         )
         .button("Ok", {
-            let tx = tx.clone();
+            let root = Arc::clone(&root);
             move |s| {
                 let content = s.call_on_name("path", |v: &mut EditView| v.get_content());
-                tx.send(content).unwrap();
+                *root.lock().unwrap() = content;
                 s.quit();
             }
         })
@@ -65,9 +64,9 @@ fn ask_for_game_path() -> Config {
     );
     siv.run();
 
-    let root = rx.recv().unwrap();
+    let root = root.lock().unwrap();
     // FIXME: root doesn't actually check if path is correct
-    Config::new(root.expect("game root not provided").as_ref())
+    Config::new(root.as_deref().expect("game root not provided"))
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
