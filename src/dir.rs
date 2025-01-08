@@ -1,4 +1,3 @@
-use crate::config::Config;
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -9,9 +8,18 @@ const ORIGINAL_DIR: &str = r"Sea Power_Data\StreamingAssets\original";
 const AIRCRAFT_DIR: &str = "aircraft";
 const VESSEL_DIR: &str = "vessels";
 
-pub fn config_dir() -> Option<PathBuf> {
-    // TODO: figure out why config_dir can fail
-    Some(dirs::config_dir()?.join("spmg"))
+pub fn config_dir() -> PathBuf {
+    // very unlikely to fail (unless you're running something older than
+    // windows vista)
+    //
+    // as far as I understand it, this will not fail on windows unless either
+    // the "folder ID" doesn't exist or the referenced "folder" doesn't have a
+    // path (e.g. printer)
+    //
+    // see https://learn.microsoft.com/en-us/windows/win32/api/shlobj_core/nf-shlobj_core-shgetknownfolderpath#return-value
+    dirs::config_dir()
+        .expect("failed to find config path")
+        .join("spmg")
 }
 
 pub fn find_root_dir() -> Option<PathBuf> {

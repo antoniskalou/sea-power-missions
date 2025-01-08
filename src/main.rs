@@ -5,12 +5,11 @@ mod mission;
 mod rand_ext;
 mod unit_db;
 
-use config::{Config, ConfigLoadError};
+use config::Config;
 use configparser::ini::Ini;
-use cursive::view::{Nameable, Resizable};
-use cursive::views::{self, Dialog, DialogFocus, EditView, LinearLayout, TextView};
+use cursive::view::Nameable;
+use cursive::views::{Dialog, EditView, LinearLayout, TextView};
 use mission::Mission;
-use std::any::Any;
 use std::error::Error;
 use std::path::PathBuf;
 use std::str;
@@ -25,12 +24,12 @@ fn load_template() -> Result<Ini, String> {
     Ok(config)
 }
 
-fn config_file() -> Option<PathBuf> {
-    Some(dir::config_dir()?.join("config.ini"))
+fn config_file() -> PathBuf {
+    dir::config_dir().join("config.ini")
 }
 
 fn load_config() -> Option<Config> {
-    let config_file = config_file()?;
+    let config_file = config_file();
     eprintln!("attempting to load config from {}", config_file.display());
 
     Config::load(&config_file)
@@ -90,7 +89,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     if needs_write {
         eprintln!("updating config file...");
-        config.save(config_file().unwrap())?;
+        config.save(config_file())?;
     }
 
     // TODO: if not found, create a dialog with cursive and ask for input, then
