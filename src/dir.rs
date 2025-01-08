@@ -10,18 +10,12 @@ const AIRCRAFT_DIR: &str = "aircraft";
 const VESSEL_DIR: &str = "vessels";
 
 pub fn config_dir() -> Option<PathBuf> {
+    // TODO: figure out why config_dir can fail
     Some(dirs::config_dir()?.join("spmg"))
 }
 
-pub fn config_file() -> Option<PathBuf> {
-    Some(config_dir()?.join("config.ini"))
-}
-
-// TODO: return result with useful error
-pub fn root_dir() -> Option<PathBuf> {
-    // save to app config if check_know_locations returns something
-    // and app config doesn't exist
-    try_load_config().or_else(check_known_locations)
+pub fn find_root_dir() -> Option<PathBuf> {
+    check_known_locations()
 }
 
 pub fn mission_dir(root_dir: &Path) -> PathBuf {
@@ -38,24 +32,6 @@ pub fn aircraft_dir(root_dir: &Path) -> PathBuf {
 
 pub fn vessel_dir(root_dir: &Path) -> PathBuf {
     original_dir(root_dir).join(VESSEL_DIR)
-}
-
-fn try_load_config() -> Option<PathBuf> {
-    let config_file = config_file()?;
-    eprintln!("attempting to load config from {}", config_file.display());
-
-    let path = Config::load(&config_file)
-        .ok()
-        .map(|config| config.game_root)
-        // ignore if path doesn't actually exist, we can then find and reset
-        // the path later (from user input or known locations)
-        .filter(|path| path.exists());
-
-    if path.is_none() {
-        eprintln!("\tFAILED")
-    }
-
-    path
 }
 
 fn check_known_locations() -> Option<PathBuf> {

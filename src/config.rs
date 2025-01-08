@@ -38,7 +38,7 @@ impl Config {
         Ok(Config { game_root })
     }
 
-    pub fn save<P: AsRef<Path>>(self, path: P) -> Result<(), ConfigWriteError> {
+    pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<(), ConfigWriteError> {
         ini::Ini::new().write(&path).map_err(|e| ConfigWriteError {
             path: path.as_ref().to_owned(),
             source: e,
