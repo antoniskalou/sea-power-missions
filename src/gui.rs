@@ -7,7 +7,6 @@ use std::sync::{Arc, Mutex};
 use crate::mission::{self, MissionOptions, TaskforceOptions, UnitOption};
 use crate::unit_db::{Nation, Unit, UnitDb, UnitType};
 
-use clippers::Clipboard;
 use cursive::event::Event;
 use cursive::reexports::log::LevelFilter;
 use cursive::traits::*;
@@ -19,6 +18,13 @@ use cursive::Cursive;
 
 use views::{DefaultSelectView, UnitTable, UnitTree, UnitTreeSelection};
 
+#[derive(Clone, Debug)]
+pub enum AskForGamePathCommand {
+    GiveUp,
+    TryAgain,
+    Save(PathBuf),
+}
+
 /// Create a dialog asking the user to insert the game path, die and return
 /// the user-given path.
 ///
@@ -26,29 +32,38 @@ use views::{DefaultSelectView, UnitTable, UnitTree, UnitTreeSelection};
 ///
 /// `show_error` is set to true if a validation error should be shown to the
 /// user. This is useful if an attempt was previously made and failed.
-pub fn ask_for_game_path(show_error: bool) -> Option<PathBuf> {
+pub fn ask_for_game_path(show_error: bool) -> AskForGamePathCommand {
     let mut siv = cursive::default();
     siv.set_window_title("Sea Power Location Picker");
 
-    let path = Arc::new(Mutex::new(None));
+    let command = Arc::new(Mutex::new(AskForGamePathCommand::TryAgain));
     siv.add_layer(
         OnEventView::new(
             Dialog::around(
                 LinearLayout::vertical()
                     .child(TextView::new(
-                        "Failed to find your Sea Power install, please paste it below...",
+                        "Failed to find your Sea Power install, please paste (CTRL-V) it below...",
                     ))
                     .child(EditView::new().with_name("path")),
             )
             .button("Save", {
-                let path = Arc::clone(&path);
+                let command = Arc::clone(&command);
                 move |s| {
                     let content = s.call_on_name("path", |v: &mut EditView| v.get_content());
-                    *path.lock().unwrap() = content;
+                    let path = content.as_deref().map(PathBuf::from);
+                    *command.lock().unwrap() = path
+                        .map(AskForGamePathCommand::Save)
+                        .unwrap_or(AskForGamePathCommand::TryAgain);
                     s.quit();
                 }
             })
-            .button("Quit", |s| s.quit())
+            .button("Quit", {
+                let command = Arc::clone(&command);
+                move |s| {
+                    *command.lock().unwrap() = AskForGamePathCommand::GiveUp;
+                    s.quit()
+                }
+            })
             .title("Game location not found"),
         )
         // Ctrl-V doesn't work properly in the default windows CLI (which is
@@ -70,8 +85,8 @@ pub fn ask_for_game_path(show_error: bool) -> Option<PathBuf> {
 
     siv.run();
 
-    let path = path.lock().unwrap();
-    path.as_deref().map(PathBuf::from)
+    let command = command.lock().unwrap();
+    command.clone()
 }
 
 #[derive(Clone, Debug)]

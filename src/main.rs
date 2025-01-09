@@ -7,6 +7,7 @@ mod unit_db;
 
 use config::Config;
 use configparser::ini::Ini;
+use gui::AskForGamePathCommand;
 use mission::Mission;
 use std::error::Error;
 use std::path::PathBuf;
@@ -39,17 +40,13 @@ fn load_config() -> Option<Config> {
 }
 
 /// Repeatedly ask the user for the game path until the end of time.
-// FIXME this isn't great if you run it directly in the terminal, as you can't
-// exit with Ctrl-C. It would be better to allow a choice of quitting.
 fn ask_for_path_repeatedly() -> PathBuf {
     // if we've tried before and failed we should show a validation error
     let mut show_error = false;
     loop {
         match gui::ask_for_game_path(show_error) {
-            Some(path) if path.exists() => {
-                return path;
-            }
-            // invalid path, try again
+            AskForGamePathCommand::GiveUp => std::process::exit(0),
+            AskForGamePathCommand::Save(path) if path.exists() => return path,
             _ => {
                 show_error = true;
                 continue;
