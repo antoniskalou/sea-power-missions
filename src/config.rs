@@ -39,7 +39,13 @@ impl Config {
     }
 
     pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<(), ConfigWriteError> {
-        ini::Ini::new().write(&path).map_err(|e| ConfigWriteError {
+        let mut ini = ini::Ini::new();
+        {
+            // TODO handle to_str failure, will happen if given invalid UTF-8 somehow
+            let game_root = self.game_root.as_path().to_str().unwrap();
+            ini.setstr("general", "game_root", Some(game_root));
+        }
+        ini.write(&path).map_err(|e| ConfigWriteError {
             path: path.as_ref().to_owned(),
             source: e,
         })
