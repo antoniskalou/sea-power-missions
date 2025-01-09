@@ -1,6 +1,7 @@
 mod reusable_id;
 mod views;
 
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use crate::mission::{self, MissionOptions, TaskforceOptions, UnitOption};
@@ -15,6 +16,39 @@ use cursive::views::{
 use cursive::Cursive;
 
 use views::{DefaultSelectView, UnitTable, UnitTree, UnitTreeSelection};
+
+/// Create a dialog asking the user to insert the game path, die and return
+/// the user-given path.
+///
+/// Intended to be called multiple times if need be.
+pub fn ask_for_game_path() -> Option<PathBuf> {
+    let mut siv = cursive::default();
+    siv.set_window_title("Sea Power Location Picker");
+
+    let root = Arc::new(Mutex::new(None));
+    siv.add_layer(
+        Dialog::around(
+            LinearLayout::vertical()
+                .child(TextView::new(
+                    "Failed to find your Sea Power install, please paste it below...",
+                ))
+                .child(EditView::new().with_name("path")),
+        )
+        .button("Ok", {
+            let root = Arc::clone(&root);
+            move |s| {
+                let content = s.call_on_name("path", |v: &mut EditView| v.get_content());
+                *root.lock().unwrap() = content;
+                s.quit();
+            }
+        })
+        .title("Game location not found"),
+    );
+    siv.run();
+
+    let root = root.lock().unwrap();
+    root.as_deref().map(PathBuf::from)
+}
 
 #[derive(Clone, Debug)]
 struct AppState {

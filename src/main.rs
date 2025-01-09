@@ -7,13 +7,11 @@ mod unit_db;
 
 use config::Config;
 use configparser::ini::Ini;
-use cursive::view::Nameable;
-use cursive::views::{Dialog, EditView, LinearLayout, TextView};
 use mission::Mission;
 use std::error::Error;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use unit_db::UnitDb;
 
 const MISSION_TEMPLATE: &str = include_str!("../resources/mission_template.ini");
@@ -40,33 +38,30 @@ fn load_config() -> Option<Config> {
         .filter(|config| config.game_root.exists())
 }
 
-fn ask_for_game_path() -> Config {
-    let root = Arc::new(Mutex::new(None));
-    let mut siv = cursive::default();
-    siv.set_window_title("Sea Power Location Picker");
-    siv.add_layer(
-        Dialog::around(
-            LinearLayout::vertical()
-                .child(TextView::new(
-                    "Failed to find your Sea Power install, please paste it below...",
-                ))
-                .child(EditView::new().with_name("path")),
-        )
-        .button("Ok", {
-            let root = Arc::clone(&root);
-            move |s| {
-                let content = s.call_on_name("path", |v: &mut EditView| v.get_content());
-                *root.lock().unwrap() = content;
-                s.quit();
+/// Repeatedly ask the user for the game path until `max_times` is reached,
+/// where the program will be killed.
+fn ask_for_path_repeatedly(max_tries: u8) -> PathBuf {
+    let mut tries = 0;
+    loop {
+        match gui::ask_for_game_path() {
+            Some(path) if path.exists() => {
+                return path;
             }
-        })
-        .title("Game location not found"),
-    );
-    siv.run();
-
-    let root = root.lock().unwrap();
-    // FIXME: root doesn't actually check if path is correct
-    Config::new(root.as_deref().expect("game root not provided"))
+            // we reached the tries limit
+            _ if tries > max_tries => {
+                eprintln!(
+                    "Failed to get the game root after {} tries, giving up...",
+                    max_tries
+                );
+                std::process::exit(1);
+            }
+            // invalid path, try again
+            _ => {
+                tries += 1;
+                continue;
+            }
+        }
+    }
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -76,7 +71,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         // otherwise try and find the root directory
         .or_else(|| dir::find_root_dir().map(|path| (Config::new(path), true)))
         // can't find it, let's ask the user
-        .unwrap_or_else(|| (ask_for_game_path(), true));
+        // FIXME: ask repeatedly until we get a valid path
+        .unwrap_or_else(|| (Config::new(gui::ask_for_game_path().unwrap()), true));
     eprintln!("{:#?}", config);
     eprintln!(
         "Detected game folder: {}",
