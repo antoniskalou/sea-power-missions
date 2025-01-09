@@ -9,7 +9,7 @@ use config::Config;
 use configparser::ini::Ini;
 use mission::Mission;
 use std::error::Error;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::str;
 use std::sync::Arc;
 use unit_db::UnitDb;
@@ -89,11 +89,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         config.save(config_file())?;
     }
 
-    // TODO: if not found, create a dialog with cursive and ask for input, then
-    // update the game config file
-
     let unit_db = Arc::new(UnitDb::new(&config.game_root).expect("failed to initialise UnitDB"));
-
     gui::App::new(&unit_db).run({
         let unit_db = unit_db.clone();
         move |options| {

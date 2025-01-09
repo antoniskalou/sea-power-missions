@@ -28,7 +28,7 @@ pub fn ask_for_game_path(show_error: bool) -> Option<PathBuf> {
     let mut siv = cursive::default();
     siv.set_window_title("Sea Power Location Picker");
 
-    let root = Arc::new(Mutex::new(None));
+    let path = Arc::new(Mutex::new(None));
     siv.add_layer(
         Dialog::around(
             LinearLayout::vertical()
@@ -38,10 +38,10 @@ pub fn ask_for_game_path(show_error: bool) -> Option<PathBuf> {
                 .child(EditView::new().with_name("path")),
         )
         .button("Ok", {
-            let root = Arc::clone(&root);
+            let path = Arc::clone(&path);
             move |s| {
                 let content = s.call_on_name("path", |v: &mut EditView| v.get_content());
-                *root.lock().unwrap() = content;
+                *path.lock().unwrap() = content;
                 s.quit();
             }
         })
@@ -56,8 +56,8 @@ pub fn ask_for_game_path(show_error: bool) -> Option<PathBuf> {
 
     siv.run();
 
-    let root = root.lock().unwrap();
-    root.as_deref().map(PathBuf::from)
+    let path = path.lock().unwrap();
+    path.as_deref().map(PathBuf::from)
 }
 
 #[derive(Clone, Debug)]
