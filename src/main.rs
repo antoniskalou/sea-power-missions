@@ -39,6 +39,8 @@ fn load_config() -> Option<Config> {
 }
 
 /// Repeatedly ask the user for the game path until the end of time.
+// FIXME this isn't great if you run it directly in the terminal, as you can't
+// exit with Ctrl-C. It would be better to allow a choice of quitting.
 fn ask_for_path_repeatedly() -> PathBuf {
     // if we've tried before and failed we should show a validation error
     let mut show_error = false;
@@ -61,7 +63,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let (config, needs_write) = load_config()
         .map(|config| (config, false))
         // otherwise try and find the root directory
-        .or_else(|| dir::find_root_dir().map(|path| (Config::new(path), true)))
+        // .or_else(|| dir::find_root_dir().map(|path| (Config::new(path), true)))
         // can't find it, let's ask the user
         .unwrap_or_else(|| (Config::new(ask_for_path_repeatedly()), true));
     eprintln!(

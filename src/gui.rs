@@ -7,11 +7,13 @@ use std::sync::{Arc, Mutex};
 use crate::mission::{self, MissionOptions, TaskforceOptions, UnitOption};
 use crate::unit_db::{Nation, Unit, UnitDb, UnitType};
 
+use clippers::Clipboard;
+use cursive::event::Event;
 use cursive::reexports::log::LevelFilter;
 use cursive::traits::*;
 use cursive::views::{
-    Button, Dialog, DummyView, EditView, LinearLayout, ListView, Panel, ResizedView, SelectView,
-    TextView,
+    Button, Dialog, DummyView, EditView, LinearLayout, ListView, OnEventView, Panel, ResizedView,
+    SelectView, TextView,
 };
 use cursive::Cursive;
 
@@ -29,24 +31,35 @@ pub fn ask_for_game_path(show_error: bool) -> Option<PathBuf> {
     siv.set_window_title("Sea Power Location Picker");
 
     let path = Arc::new(Mutex::new(None));
-    // FIXME it doesn't seem clipboard works properly on windows CLI
     siv.add_layer(
-        Dialog::around(
-            LinearLayout::vertical()
-                .child(TextView::new(
-                    "Failed to find your Sea Power install, please paste it below...",
-                ))
-                .child(EditView::new().with_name("path")),
+        OnEventView::new(
+            Dialog::around(
+                LinearLayout::vertical()
+                    .child(TextView::new(
+                        "Failed to find your Sea Power install, please paste it below...",
+                    ))
+                    .child(EditView::new().with_name("path")),
+            )
+            .button("Save", {
+                let path = Arc::clone(&path);
+                move |s| {
+                    let content = s.call_on_name("path", |v: &mut EditView| v.get_content());
+                    *path.lock().unwrap() = content;
+                    s.quit();
+                }
+            })
+            .button("Quit", |s| s.quit())
+            .title("Game location not found"),
         )
-        .button("Ok", {
-            let path = Arc::clone(&path);
-            move |s| {
-                let content = s.call_on_name("path", |v: &mut EditView| v.get_content());
-                *path.lock().unwrap() = content;
-                s.quit();
+        // Ctrl-V doesn't work properly in the default windows CLI (which is
+        // what I expect most people to use), so lets add clipboard support
+        // manually.
+        .on_event(Event::CtrlChar('v'), |s| {
+            let mut clipboard = clippers::Clipboard::get();
+            if let Some(clippers::ClipperData::Text(text)) = clipboard.read() {
+                s.call_on_name("path", |v: &mut EditView| v.set_content(text.as_str()));
             }
-        })
-        .title("Game location not found"),
+        }),
     );
 
     if show_error {
