@@ -21,7 +21,10 @@ use views::{DefaultSelectView, UnitTable, UnitTree, UnitTreeSelection};
 /// the user-given path.
 ///
 /// Intended to be called multiple times if need be.
-pub fn ask_for_game_path() -> Option<PathBuf> {
+///
+/// `show_error` is set to true if a validation error should be shown to the
+/// user. This is useful if an attempt was previously made and failed.
+pub fn ask_for_game_path(show_error: bool) -> Option<PathBuf> {
     let mut siv = cursive::default();
     siv.set_window_title("Sea Power Location Picker");
 
@@ -44,6 +47,13 @@ pub fn ask_for_game_path() -> Option<PathBuf> {
         })
         .title("Game location not found"),
     );
+
+    if show_error {
+        siv.add_layer(Dialog::info(
+            "Given path was invalid or did not exist, try again...",
+        ));
+    }
+
     siv.run();
 
     let root = root.lock().unwrap();
