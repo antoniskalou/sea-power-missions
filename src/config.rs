@@ -28,16 +28,20 @@ pub struct Config {
 impl Config {
     pub fn new<P: AsRef<Path>>(game_root: P) -> Self {
         Config {
-            game_root: game_root.as_ref().to_owned(),
+            game_root: game_root.as_ref().to_path_buf(),
         }
     }
 
+    /// Load and initialize the config from a `path`.
+    ///
+    /// Will fail if `path` doesn't exist or the required keys are missing.
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, ConfigLoadError> {
         let config = load_config(path.as_ref())?;
         let game_root = fetch_key(&config, "general", "game_root")?.into();
         Ok(Config { game_root })
     }
 
+    /// Save state to a config file at the given `path`.
     pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<(), ConfigWriteError> {
         let mut ini = ini::Ini::new();
         {
