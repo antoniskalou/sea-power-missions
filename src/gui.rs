@@ -29,6 +29,7 @@ pub fn ask_for_game_path(show_error: bool) -> Option<PathBuf> {
     siv.set_window_title("Sea Power Location Picker");
 
     let path = Arc::new(Mutex::new(None));
+    // FIXME it doesn't seem clipboard works properly on windows CLI
     siv.add_layer(
         Dialog::around(
             LinearLayout::vertical()

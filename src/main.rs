@@ -38,29 +38,18 @@ fn load_config() -> Option<Config> {
         .filter(|config| config.game_root.exists())
 }
 
-/// Repeatedly ask the user for the game path until `max_tries` is reached,
-/// where the program will be killed.
-fn ask_for_path_repeatedly(max_tries: u8) -> PathBuf {
-    let mut tries = 0;
+/// Repeatedly ask the user for the game path until the end of time.
+fn ask_for_path_repeatedly() -> PathBuf {
+    // if we've tried before and failed we should show a validation error
+    let mut show_error = false;
     loop {
-        // if we've tried before and failed, we should show a validation error
-        // to the user
-        let show_error = tries > 0;
         match gui::ask_for_game_path(show_error) {
             Some(path) if path.exists() => {
                 return path;
             }
-            // we reached the tries limit
-            _ if tries > max_tries => {
-                eprintln!(
-                    "Failed to get the game root after {} tries, giving up...",
-                    max_tries
-                );
-                std::process::exit(1);
-            }
             // invalid path, try again
             _ => {
-                tries += 1;
+                show_error = true;
                 continue;
             }
         }
@@ -74,8 +63,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         // otherwise try and find the root directory
         .or_else(|| dir::find_root_dir().map(|path| (Config::new(path), true)))
         // can't find it, let's ask the user
-        .unwrap_or_else(|| (Config::new(ask_for_path_repeatedly(3)), true));
-    eprintln!("{:#?}", config);
+        .unwrap_or_else(|| (Config::new(ask_for_path_repeatedly()), true));
     eprintln!(
         "Detected game folder: {}",
         config
