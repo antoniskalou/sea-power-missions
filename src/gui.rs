@@ -33,36 +33,29 @@ pub enum AskForGamePathCommand {
 /// `show_error` is set to true if a validation error should be shown to the
 /// user. This is useful if an attempt was previously made and failed.
 pub fn ask_for_game_path(show_error: bool) -> AskForGamePathCommand {
+    use AskForGamePathCommand::*;
+
     let mut siv = cursive::default();
     siv.set_window_title("Sea Power Location Picker");
-
-    let command = Arc::new(Mutex::new(AskForGamePathCommand::TryAgain));
+    siv.set_user_data(TryAgain);
     siv.add_layer(
         OnEventView::new(
             Dialog::around(
                 LinearLayout::vertical()
                     .child(TextView::new(
-                        "Failed to find your Sea Power install, please paste (CTRL-V) it below...",
+                        "Failed to find your Sea Power install, please paste it (CTRL-V) below...",
                     ))
                     .child(EditView::new().with_name("path")),
             )
-            .button("Save", {
-                let command = Arc::clone(&command);
-                move |s| {
-                    let content = s.call_on_name("path", |v: &mut EditView| v.get_content());
-                    let path = content.as_deref().map(PathBuf::from);
-                    *command.lock().unwrap() = path
-                        .map(AskForGamePathCommand::Save)
-                        .unwrap_or(AskForGamePathCommand::TryAgain);
-                    s.quit();
-                }
+            .button("Save", |s| {
+                let content = s.call_on_name("path", |v: &mut EditView| v.get_content());
+                let path = content.as_deref().map(PathBuf::from);
+                s.set_user_data(path.map(Save).unwrap_or(TryAgain));
+                s.quit();
             })
-            .button("Quit", {
-                let command = Arc::clone(&command);
-                move |s| {
-                    *command.lock().unwrap() = AskForGamePathCommand::GiveUp;
-                    s.quit()
-                }
+            .button("Quit", |s| {
+                s.set_user_data(GiveUp);
+                s.quit()
             })
             .title("Game location not found"),
         )
@@ -84,9 +77,9 @@ pub fn ask_for_game_path(show_error: bool) -> AskForGamePathCommand {
     }
 
     siv.run();
-
-    let command = command.lock().unwrap();
-    command.clone()
+    siv.take_user_data()
+        // should never happen
+        .expect("missing user data from cursive")
 }
 
 #[derive(Clone, Debug)]
