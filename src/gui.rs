@@ -332,20 +332,38 @@ where
                 LinearLayout::vertical()
                     .child(filter_panel)
                     .child(available_panel.min_size((32, 20)))
+                    .child(TextView::new("Press F1 to view keybindings."))
                     .child(selected_panel.min_size((32, 20))),
             )
             .scrollable()
             .full_screen(),
     )
+    // .on_event(Event::Char('+'), increment_count)
+    // .on_event(Event::Char('-'), decrement_count)
     .on_event(Event::Char('f'), add_formation)
     .on_event(Event::Char('r'), {
         let state = state.clone();
         move |s| add_random(s, state.clone())
     })
     .on_event(Event::Char('d'), remove_selected)
-    .on_event(Event::Key(event::Key::Esc), |s| {
-        s.pop_layer();
+    .on_event(Event::Key(event::Key::F1), |s| {
+        s.add_layer(keybinding_dialog())
     })
+}
+
+const KEYBINDING_TEXT: &str = "d - Remove Unit\n\
+     f - Create Formation\n\
+     r - Random\n\
+     / - Search";
+
+fn keybinding_dialog() -> impl View {
+    fn close(s: &mut Cursive) {
+        s.pop_layer();
+    }
+
+    OnEventView::new(Dialog::around(TextView::new(KEYBINDING_TEXT)).title("Keybindings"))
+        .on_event(Event::Key(event::Key::Esc), close)
+        .on_event(Event::Key(event::Key::F1), close)
 }
 
 fn random_unit_view<F>(state: &AppState, on_submit: F) -> impl View
