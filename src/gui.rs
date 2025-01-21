@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 use crate::mission::{self, MissionOptions, TaskforceOptions, UnitOption};
 use crate::unit_db::{Nation, Unit, UnitDb, UnitType};
 
-use cursive::event::Event;
+use cursive::event::{self, Event};
 use cursive::reexports::log::LevelFilter;
 use cursive::traits::*;
 use cursive::views::{
@@ -343,6 +343,9 @@ where
         move |s| add_random(s, state.clone())
     })
     .on_event(Event::Char('d'), remove_selected)
+    .on_event(Event::Key(event::Key::Esc), |s| {
+        s.pop_layer();
+    })
 }
 
 fn random_unit_view<F>(state: &AppState, on_submit: F) -> impl View
