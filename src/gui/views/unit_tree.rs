@@ -1,10 +1,8 @@
-use std::sync::Arc;
-
 use crate::mission::{FormationOption, TaskforceOptions, UnitOption};
 
 use crate::gui::reusable_id::ReusableId;
+use cursive::view::ViewWrapper;
 use cursive::wrap_impl;
-use cursive::{view::ViewWrapper, Cursive};
 use cursive_tree_view::{Placement, TreeView};
 
 #[derive(Clone, Debug)]
@@ -151,23 +149,6 @@ impl UnitTree {
     // TODO: allow creating with items so as to re-fill list if re-opened
     // pub fn with_items(items: Vec<UnitSelection>) -> Self {}
 
-    /// Callback for when an item has requested removal.
-    pub fn on_remove<F>(mut self, cb: F) -> Self
-    where
-        F: Fn(&mut Cursive, usize) + Send + Sync + 'static,
-    {
-        let cb = Arc::new(cb);
-        self.view.set_on_submit({
-            let cb = cb.clone();
-            move |s, row| cb(s, row)
-        });
-        self.view.set_on_collapse({
-            let cb = cb.clone();
-            move |s, row, _, _| cb(s, row)
-        });
-        self
-    }
-
     fn add_unit_selection(&mut self, selection: UnitSelection) {
         let insert_at = self.view.row().unwrap_or(0);
         let placement = self
@@ -236,6 +217,10 @@ impl UnitTree {
         } else {
             self.view.clear();
         }
+    }
+
+    pub fn row(&self) -> Option<usize> {
+        self.view.row()
     }
 
     /// Return all selected items (units & formations) from the tree.

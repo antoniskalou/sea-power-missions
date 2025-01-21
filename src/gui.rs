@@ -11,8 +11,7 @@ use cursive::event::Event;
 use cursive::reexports::log::LevelFilter;
 use cursive::traits::*;
 use cursive::views::{
-    Button, Dialog, DummyView, EditView, LinearLayout, ListView, OnEventView, Panel, ResizedView,
-    SelectView, TextView,
+    Button, Dialog, EditView, LinearLayout, ListView, OnEventView, Panel, SelectView, TextView,
 };
 use cursive::Cursive;
 
@@ -237,9 +236,11 @@ where
         }
     }
 
-    fn remove_selected(s: &mut Cursive, row: usize) {
+    fn remove_selected(s: &mut Cursive) {
         s.call_on_name("selected", |selected: &mut UnitTree| {
-            selected.remove(row);
+            if let Some(row) = selected.row() {
+                selected.remove(row);
+            }
         });
     }
 
@@ -313,38 +314,35 @@ where
     let selected_panel = Panel::new(
         UnitTree::new()
             .with_selection(UnitTreeSelection::from(taskforce))
-            .on_remove(remove_selected)
             .with_name("selected")
             .scrollable(),
     )
     .title("Selected");
 
-    Dialog::new()
-        .title("Customise Group")
-        .button("Ok", move |s| {
-            let view = s
-                .find_name::<UnitTree>("selected")
-                .expect("missing selected view");
-            on_submit(s, view.selected());
-        })
-        .content(
-            LinearLayout::vertical()
-                .child(filter_panel)
-                .child(available_panel.min_size((32, 20)))
-                .child(
-                    LinearLayout::horizontal()
-                        .child(Button::new("Create Formation", add_formation))
-                        .child(Button::new("Create Random", {
-                            let state = state.clone();
-                            move |s| add_random(s, state.clone())
-                        })),
-                )
-                // spacing
-                .child(ResizedView::with_fixed_size((4, 0), DummyView))
-                .child(selected_panel.min_size((32, 20))),
-        )
-        .scrollable()
-        .full_screen()
+    OnEventView::new(
+        Dialog::new()
+            .title("Customise Group")
+            .button("Ok", move |s| {
+                let view = s
+                    .find_name::<UnitTree>("selected")
+                    .expect("missing selected view");
+                on_submit(s, view.selected());
+            })
+            .content(
+                LinearLayout::vertical()
+                    .child(filter_panel)
+                    .child(available_panel.min_size((32, 20)))
+                    .child(selected_panel.min_size((32, 20))),
+            )
+            .scrollable()
+            .full_screen(),
+    )
+    .on_event(Event::Char('f'), add_formation)
+    .on_event(Event::Char('r'), {
+        let state = state.clone();
+        move |s| add_random(s, state.clone())
+    })
+    .on_event(Event::Char('d'), remove_selected)
 }
 
 fn random_unit_view<F>(state: &AppState, on_submit: F) -> impl View
