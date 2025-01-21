@@ -60,7 +60,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let (config, needs_write) = load_config()
         .map(|config| (config, false))
         // otherwise try and find the root directory
-        // .or_else(|| dir::find_root_dir().map(|path| (Config::new(path), true)))
+        .or_else(|| dir::find_root_dir().map(|path| (Config::new(path), true)))
         // can't find it, let's ask the user
         .unwrap_or_else(|| (Config::new(ask_for_path_repeatedly()), true));
     eprintln!(

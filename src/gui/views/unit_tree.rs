@@ -42,11 +42,13 @@ impl UnitSelection {
             unit_str
         }
     }
-}
 
-impl From<UnitSelection> for UnitOption {
-    fn from(value: UnitSelection) -> Self {
-        value.unit
+    /// Return the options that are associated with this unit.
+    ///
+    /// Multiple may be returned, since a unit selection can have multiple
+    /// instances of the same unit.
+    fn as_options(&self) -> Vec<UnitOption> {
+        std::iter::repeat_n(self.unit.clone(), self.count).collect()
     }
 }
 
@@ -108,11 +110,12 @@ impl From<&TaskforceOptions> for UnitTreeSelection {
 }
 
 fn options_to_units(opts: &[UnitOption]) -> Vec<UnitSelection> {
+    // TODO: count duplicates
     opts.iter().cloned().map(UnitSelection::new).collect()
 }
 
 fn units_to_options(units: &[UnitSelection]) -> Vec<UnitOption> {
-    units.iter().cloned().map(Into::into).collect()
+    units.iter().flat_map(UnitSelection::as_options).collect()
 }
 
 /// A tree view that keeps track of units and associated formations.

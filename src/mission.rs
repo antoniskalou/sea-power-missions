@@ -29,8 +29,7 @@ impl std::fmt::Display for WeaponState {
 pub enum UnitOption {
     Unit(db::Unit),
     Random {
-        // FIXME: make Option<Nation>
-        nation: Option<String>,
+        nation: Option<db::Nation>,
         utype: Option<UnitType>,
     },
 }
@@ -179,7 +178,7 @@ fn insert_units(
                 // TODO: fail if not found
                 .map(|unit| insert_unit(general, units, unit)),
             UnitOption::Random { nation, utype } => {
-                let matches = unit_db.search(nation.as_deref(), *utype);
+                let matches = unit_db.search(nation.clone(), *utype);
                 matches
                     .choose(&mut thread_rng())
                     .map(|unit| insert_unit(general, units, unit))

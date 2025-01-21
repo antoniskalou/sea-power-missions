@@ -68,6 +68,12 @@ pub struct Nation {
     pub name: String,
 }
 
+impl PartialEq for Nation {
+    fn eq(&self, other: &Self) -> bool {
+        self.id.eq(&other.id)
+    }
+}
+
 impl std::fmt::Display for Nation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // FIXME: it would be nice to provide a {name} ({id}), but I can't since it breaks
@@ -123,10 +129,10 @@ impl UnitDb {
         self.units.get(id)
     }
 
-    pub fn search(&self, nation: Option<&str>, utype: Option<UnitType>) -> Vec<&Unit> {
+    pub fn search(&self, nation: Option<Nation>, utype: Option<UnitType>) -> Vec<&Unit> {
         self.all()
             .iter()
-            .filter(|v| nation.map(|n| v.nation.id == n).unwrap_or(true))
+            .filter(|v| nation.clone().map(|n| v.nation == n).unwrap_or(true))
             .filter(|v| utype.map(|s| v.utype == s).unwrap_or(true))
             .copied()
             .collect()

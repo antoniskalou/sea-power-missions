@@ -78,7 +78,7 @@ pub fn ask_for_game_path(show_error: bool) -> AskForGamePathCommand {
 
     siv.run();
     siv.take_user_data()
-        // should never happen
+        // should be impossible
         .expect("missing user data from cursive")
 }
 
@@ -252,9 +252,6 @@ where
     fn add_random(s: &mut Cursive, state: AppState) {
         s.add_layer(random_unit_view(&state, |s, nation, utype, count| {
             s.call_on_name("selected", |selected: &mut UnitTree| {
-                let utype = utype.clone().map(|u| {
-                    UnitType::try_from(u).expect("invalid utype returned from `selected`")
-                });
                 selected.add_n_units(
                     UnitOption::Random {
                         nation: nation.clone(),
@@ -353,7 +350,7 @@ where
 fn random_unit_view<F>(state: &AppState, on_submit: F) -> impl View
 where
     // FIXME: calls with &str, we want &Nation & &UnitType
-    F: Fn(&mut Cursive, &Option<String>, &Option<String>, usize) + Send + Sync + 'static,
+    F: Fn(&mut Cursive, Option<Nation>, Option<UnitType>, usize) + Send + Sync + 'static,
 {
     Dialog::around(
         ListView::new()
@@ -385,12 +382,12 @@ where
     .button("Create", move |s| {
         let nation = s
             .call_on_name("random_nation", |view: &mut DefaultSelectView<Nation>| {
-                view.selection().map(|n| n.to_string())
+                view.selection()
             })
             .expect("missing random_nation view");
         let utype = s
             .call_on_name("random_type", |view: &mut DefaultSelectView<UnitType>| {
-                view.selection().map(|u| u.to_string())
+                view.selection()
             })
             .expect("missing random_type view");
         let count = s
@@ -399,7 +396,7 @@ where
                 view.get_content().parse().expect("parse of count failed")
             })
             .expect("missing random_count view");
-        on_submit(s, &nation, &utype, count);
+        on_submit(s, nation, utype, count);
         s.pop_layer();
     })
     .button("Cancel", |s| {
